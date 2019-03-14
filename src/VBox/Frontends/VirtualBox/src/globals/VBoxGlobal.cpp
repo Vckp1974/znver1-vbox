@@ -1,4 +1,4 @@
-/* $Id: VBoxGlobal.cpp 77167 2019-02-05 14:44:28Z vboxsync $ */
+/* $Id: VBoxGlobal.cpp 77189 2019-02-06 20:47:57Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBoxGlobal class implementation.
  */
@@ -2633,9 +2633,40 @@ QUuid VBoxGlobal::openMediumWithFileOpenDialog(UIMediumDeviceType enmMediumType,
     return QUuid();
 }
 
+
+/**
+ * Helper for createVisoMediumWithVisoCreator.
+ * @returns IPRT status code.
+ * @param   pStrmDst            Where to write the quoted string.
+ * @param   pszPrefix           Stuff to put in front of it.
+ * @param   rStr                The string to quote and write out.
+ * @param   pszPrefix           Stuff to put after it.
+ */
+DECLINLINE(int) visoWriteQuotedString(PRTSTREAM pStrmDst, const char *pszPrefix, QString const &rStr, const char *pszPostFix)
+{
+    QByteArray const utf8Array   = rStr.toUtf8();
+    const char      *apszArgv[2] = { utf8Array.constData(), NULL };
+    char            *pszQuoted;
+    int vrc = RTGetOptArgvToString(&pszQuoted, apszArgv, RTGETOPTARGV_CNV_QUOTE_BOURNE_SH);
+    if (RT_SUCCESS(vrc))
+    {
+        if (pszPrefix)
+            vrc = RTStrmPutStr(pStrmDst, pszPrefix);
+        if (RT_SUCCESS(vrc))
+        {
+            vrc = RTStrmPutStr(pStrmDst, pszQuoted);
+            if (pszPostFix && RT_SUCCESS(vrc))
+                vrc = RTStrmPutStr(pStrmDst, pszPostFix);
+        }
+        RTStrFree(pszQuoted);
+    }
+
+    return vrc;
+}
+
+
 QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QString &strMachineName, const QString &strFolder)
 {
-
     QWidget *pDialogParent = windowManager().realParentWindow(pParent);
     QPointer<UIVisoCreator> pVisoCreator = new UIVisoCreator(pDialogParent, strMachineName);
 
@@ -2671,22 +2702,11 @@ QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QStrin
                 if (RT_SUCCESS(vrc))
                 {
                     RTStrmPrintf(pStrmViso, "--iprt-iso-maker-file-marker-bourne-sh %RTuuid\n", &Uuid);
-                    RTStrmPrintf(pStrmViso, "--volume-id=%s\n", strVisoName.toUtf8().constData());
+                    vrc = visoWriteQuotedString(pStrmViso, "--volume-id=", strVisoName, "\n");
 
-                    for (int iFile = 0; iFile < files.size(); iFile++)
-                    {
-                        QByteArray const utf8Name = files[iFile].toUtf8();
-                        const char *apszArgv[2] = { utf8Name.constData(), NULL };
-                        char *pszQuoted;
-                        vrc = RTGetOptArgvToString(&pszQuoted, apszArgv, RTGETOPTARGV_CNV_QUOTE_BOURNE_SH);
-                        if (RT_SUCCESS(vrc))
-                        {
-                            RTStrmPrintf(pStrmViso, "%s\n", pszQuoted);
-                            RTStrFree(pszQuoted);
-                        }
-                        else
-                            break;
-                    }
+                    for (int iFile = 0; iFile < files.size() && RT_SUCCESS(vrc); iFile++)
+                        vrc = visoWriteQuotedString(pStrmViso, NULL, files[iFile], "\n");
+
                     /* Append custom options if any to the file: */
                     const QStringList &customOptions = pVisoCreator->customOptions();
                     foreach (QString strLine, customOptions)
@@ -2720,37 +2740,55 @@ QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QStrin
 
 QUuid VBoxGlobal::showCreateFloppyDiskDialog(QWidget *pParent, const QString &strMachineName, const QString &strMachineFolder)
 {
+    QWidget *pDialogParent = windowManager().realParentWindow(pParent);
+
     UIFDCreationDialog *pDialog = new UIFDCreationDialog(pParent, strMachineName, strMachineFolder);
+    if (!pDialog)
+        return QUuid();
+    windowManager().registerNewParent(pDialog, pDialogParent);
+
     if (pDialog->exec())
     {
+        delete pDialog;
         return pDialog->mediumID();
     }
     delete pDialog;
     return QUuid();
 }
 
-QUuid VBoxGlobal::openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType  enmMediumType,
-                                           const QString &strMachineName, const QString &strMachineFolder)
+int VBoxGlobal::openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType  enmMediumType, QUuid &outUuid,
+                                         const QString &strMachineName, const QString &strMachineFolder,
+                                         const QString &strMachineGuestOSTypeId  /* = QString() */)
 {
     QWidget *pDialogParent = windowManager().realParentWindow(pParent);
     QPointer<UIMediumSelector> pSelector = new UIMediumSelector(enmMediumType, strMachineName,
-                                                                strMachineFolder, pDialogParent);
+                                                                strMachineFolder, strMachineGuestOSTypeId, pDialogParent);
 
     if (!pSelector)
-        return QString();
+        return static_cast<int>(UIMediumSelector::ReturnCode_Rejected);
+
     windowManager().registerNewParent(pSelector, pDialogParent);
-    if (pSelector->exec(false))
+
+    int iResult = pSelector->exec(false);
+    UIMediumSelector::ReturnCode returnCode;
+
+    if (iResult >= static_cast<int>(UIMediumSelector::ReturnCode_Max) || iResult < 0)
+        returnCode = UIMediumSelector::ReturnCode_Rejected;
+    else
+        returnCode = static_cast<UIMediumSelector::ReturnCode>(iResult);
+
+    if (returnCode == UIMediumSelector::ReturnCode_Accepted)
     {
         QList<QUuid> selectedMediumIds = pSelector->selectedMediumIds();
-        delete pSelector;
+
         /* Currently we only care about the 0th since we support single selection by intention: */
         if (selectedMediumIds.isEmpty())
-            return QUuid();
+            returnCode = UIMediumSelector::ReturnCode_Rejected;
         else
-            return selectedMediumIds[0];
+            outUuid = selectedMediumIds[0];
     }
     delete pSelector;
-    return QUuid();
+    return static_cast<int>(returnCode);
 }
 
 QUuid VBoxGlobal::createHDWithNewHDWizard(QWidget *pParent, const QString &strMachineGuestOSTypeId,
@@ -2761,7 +2799,13 @@ QUuid VBoxGlobal::createHDWithNewHDWizard(QWidget *pParent, const QString &strMa
     const QFileInfo fileInfo(strMachineFolder);
     /* Show New VD wizard: */
     UISafePointerWizardNewVD pWizard = new UIWizardNewVD(pParent, QString(), fileInfo.absolutePath(), comGuestOSType.GetRecommendedHDD());
+
+    if (!pWizard)
+        return QUuid();
+    QWidget *pDialogParent = windowManager().realParentWindow(pParent);
+    windowManager().registerNewParent(pWizard, pDialogParent);
     pWizard->prepare();
+
     const QUuid uResult = pWizard->exec() == QDialog::Accepted ? pWizard->virtualDisk().GetId() : QUuid();
     if (pWizard)
         delete pWizard;

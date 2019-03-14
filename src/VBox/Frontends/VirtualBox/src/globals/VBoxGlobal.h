@@ -1,4 +1,4 @@
-/* $Id: VBoxGlobal.h 77167 2019-02-05 14:44:28Z vboxsync $ */
+/* $Id: VBoxGlobal.h 77186 2019-02-06 19:52:33Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBoxGlobal class declaration.
  */
@@ -512,13 +512,16 @@ public:
         QUuid showCreateFloppyDiskDialog(QWidget *pParent, const QString &strMachineName, const QString &strMachineFolder);
 
         /** Creates and shows a UIMediumSelector dialog.
-          * @param  parent            Passes the parent of the dialog,
-          * @param  enmMediumType     Passes the medium type.
-          * @param  strMachineName    Passes the name of the machine,
-          * @param  strMachineFolder  Passes the machine folder,
-          * returns the ID of the  selected/created medium if successful, a null QUuid otherwise.*/
-        QUuid openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType  enmMediumType,
-                                       const QString &strMachineName, const QString &strMachineFolder);
+          * @param  parent                   Passes the parent of the dialog,
+          * @param  enmMediumType            Passes the medium type.
+          * @param  strMachineName           Passes the name of the machine,
+          * @param  strMachineFolder         Passes the machine folder,
+          * @param  strMachineGuestOSTypeId  Passes the type ID of machine's guest os,
+          * returns the return code of the UIMediumSelector::ReturnCode as int. In case of a medium selection
+          *         UUID of the selected medium is stored in @param outUuid.*/
+        int openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType  enmMediumType, QUuid &outUuid,
+                                       const QString &strMachineName, const QString &strMachineFolder,
+                                       const QString &strMachineGuestOSTypeId = QString());
 
         /** Creates and shows a UIWizardNewVD wizard.
           * @param  parent                    Passes the parent of the wizard,

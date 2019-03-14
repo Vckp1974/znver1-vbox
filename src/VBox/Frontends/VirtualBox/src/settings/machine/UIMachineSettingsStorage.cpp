@@ -1,4 +1,4 @@
-/* $Id: UIMachineSettingsStorage.cpp 77167 2019-02-05 14:44:28Z vboxsync $ */
+/* $Id: UIMachineSettingsStorage.cpp 77189 2019-02-06 20:47:57Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIMachineSettingsStorage class implementation.
  */
@@ -3797,61 +3797,51 @@ void UIMachineSettingsStorage::addAttachmentWrapper(KDeviceType enmDevice)
     const QString strControllerName(m_pModelStorage->data(index, StorageModel::R_CtrName).toString());
     const QString strMachineFolder(QFileInfo(m_strMachineSettingsFilePath).absolutePath());
 
-    bool fCancelled = false;
-    bool fCreateEmpty = false;
     QUuid uMediumId;
+    int iAnswer = static_cast<int>(UIMediumSelector::ReturnCode_Rejected);
+
     switch (enmDevice)
     {
         case KDeviceType_HardDisk:
         {
-            const int iAnswer = msgCenter().confirmHardDiskAttachmentCreation(strControllerName, this);
-            if (iAnswer == AlertButton_Choice1)
-                uMediumId = vboxGlobal().createHDWithNewHDWizard(this, m_strMachineGuestOSTypeId, m_strMachineSettingsFilePath);
-            else if (iAnswer == AlertButton_Choice2)
-                uMediumId = vboxGlobal().openMediumSelectorDialog(this, UIMediumDeviceType_HardDisk,
-                                                                  m_strMachineName, m_strMachineSettingsFilePath);
-            else if (iAnswer == AlertButton_Cancel)
-                fCancelled = true;
+            iAnswer = vboxGlobal().openMediumSelectorDialog(this, UIMediumDeviceType_HardDisk, uMediumId,
+                                                            m_strMachineName, strMachineFolder,
+                                                            m_strMachineGuestOSTypeId);
             break;
         }
         case KDeviceType_DVD:
         {
-            int iAnswer = msgCenter().confirmOpticalAttachmentCreation(strControllerName, this);
-            if (iAnswer == AlertButton_Choice2)
-                uMediumId = vboxGlobal().openMediumSelectorDialog(this, UIMediumDeviceType_DVD,
-                                                                  m_strMachineName, m_strMachineSettingsFilePath);
-            /* For optical medium we allow creating an empty drive: */
-            else if (iAnswer == AlertButton_Choice1)
-                fCreateEmpty = true;
-            else if (iAnswer == AlertButton_Cancel)
-                fCancelled = true;
+            iAnswer = vboxGlobal().openMediumSelectorDialog(this, UIMediumDeviceType_DVD, uMediumId,
+                                                            m_strMachineName, strMachineFolder);
             break;
         }
         case KDeviceType_Floppy:
         {
-            int iAnswer = msgCenter().confirmFloppyAttachmentCreation(strControllerName, this);
-            if (iAnswer == AlertButton_Choice2)
-                uMediumId = vboxGlobal().openMediumSelectorDialog(this, UIMediumDeviceType_Floppy,
-                                                                  m_strMachineName, m_strMachineSettingsFilePath);
-            /* We allow creating an empty floppy drive: */
-            else if (iAnswer == AlertButton_Choice1)
-                fCreateEmpty = true;
-            else if (iAnswer == AlertButton_Cancel)
-                fCancelled = true;
-            break;
+            iAnswer = vboxGlobal().openMediumSelectorDialog(this, UIMediumDeviceType_Floppy, uMediumId,
+                                                            m_strMachineName, strMachineFolder);
         }
         default: break; /* Shut up, MSC! */
     }
+    /* continue only if iAnswer is either UIMediumSelector::ReturnCode_Accepted or UIMediumSelector::ReturnCode_LeftEmpty: */
+    if (iAnswer != static_cast<int>(UIMediumSelector::ReturnCode_Accepted) &&
+        iAnswer != static_cast<int>(UIMediumSelector::ReturnCode_LeftEmpty))
+        return;
 
-    if (!fCancelled && (!uMediumId.isNull() || fCreateEmpty))
-    {
-        m_pModelStorage->addAttachment(QUuid(m_pModelStorage->data(index, StorageModel::R_ItemId).toString()), enmDevice, uMediumId);
-        m_pModelStorage->sort();
-        emit sigStorageChanged();
+    /* Only DVDs and floppy can be created empty: */
+    if (iAnswer == static_cast<int>(UIMediumSelector::ReturnCode_LeftEmpty) &&
+        (enmDevice != KDeviceType_DVD && enmDevice != KDeviceType_Floppy))
+        return;
 
-        /* Revalidate: */
-        revalidate();
-    }
+    /* if iAnswer is UIMediumSelector::ReturnCode_Accepted then we have to have a valid uMediumId: */
+    if (iAnswer == static_cast<int>(UIMediumSelector::ReturnCode_Accepted) && uMediumId.isNull())
+        return;
+
+    m_pModelStorage->addAttachment(QUuid(m_pModelStorage->data(index, StorageModel::R_ItemId).toString()), enmDevice, uMediumId);
+    m_pModelStorage->sort();
+    emit sigStorageChanged();
+
+    /* Revalidate: */
+    revalidate();
 }
 
 void UIMachineSettingsStorage::updateAdditionalDetails(KDeviceType enmType)
