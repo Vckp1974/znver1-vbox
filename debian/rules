@@ -47,6 +47,8 @@ endif
 
 	mkdir -p out
 	./configure \
+	    CFLAGS='-march=znver1' \
+	    CPPFLAGS='-march=znver1' \
 	    --ose \
 	    --odir=$(abspath out) \
 	    --with-linux="/usr" \
