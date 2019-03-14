@@ -1,4 +1,4 @@
-/* $Id: UIMediumSelector.cpp 77189 2019-02-06 20:47:57Z vboxsync $ */
+/* $Id: UIMediumSelector.cpp 77200 2019-02-07 15:52:14Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIMediumSelector class implementation.
  */
@@ -189,10 +189,10 @@ void UIMediumSelector::prepareActions()
     {
 
         m_pActionCreate->setShortcut(QKeySequence("Ctrl+C"));
-        m_pActionCreate->setIcon(UIIconPool::iconSetFull(QString(":/%1_add_32px.png").arg(strPrefix),
-                                                         QString(":/%1_add_16px.png").arg(strPrefix),
-                                                         QString(":/%1_add_disabled_32px.png").arg(strPrefix),
-                                                         QString(":/%1_add_disabled_16px.png").arg(strPrefix)));
+        m_pActionCreate->setIcon(UIIconPool::iconSetFull(QString(":/%1_create_32px.png").arg(strPrefix),
+                                                         QString(":/%1_create_16px.png").arg(strPrefix),
+                                                         QString(":/%1_create_disabled_32px.png").arg(strPrefix),
+                                                         QString(":/%1_create_disabled_16px.png").arg(strPrefix)));
         if (m_pMainMenu)
             m_pMainMenu->addAction(m_pActionCreate);
         if (m_pToolBar)
@@ -445,8 +445,12 @@ void UIMediumSelector::sltCreateMedium()
 
     if (!uMediumId.isNull())
     {
+        /* Update the tree widget making sure we show the new item: */
         repopulateTreeWidget();
+        /* Select the new item: */
         selectMedium(uMediumId);
+        /* Update the search: */
+        m_pSearchWidget->search(m_pTreeWidget);
     }
 }
 
@@ -486,6 +490,8 @@ void UIMediumSelector::sltHandleRefresh()
 {
     /* Initialize media enumation: */
     vboxGlobal().startMediumEnumeration();
+    /* Update the search: */
+    m_pSearchWidget->search(m_pTreeWidget);
 }
 
 void UIMediumSelector::sltHandlePerformSearch()
