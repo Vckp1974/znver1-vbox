@@ -1,4 +1,4 @@
-/* $Id: IEMAllCImplVmxInstr.cpp.h 76856 2019-01-17 13:07:33Z vboxsync $ */
+/* $Id: IEMAllCImplVmxInstr.cpp.h 76875 2019-01-18 06:00:33Z vboxsync $ */
 /** @file
  * IEM - VT-x instruction implementation.
  */
@@ -2866,10 +2866,6 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexit(PVMCPU pVCpu, uint32_t uExitReason)
 
     /* We're no longer in nested-guest execution mode. */
     pVCpu->cpum.GstCtx.hwvirt.vmx.fInVmxNonRootMode = false;
-
-#ifdef IN_RING3
-    LogRel(("vmexit: uExitReason=%s\n", HMR3GetVmxExitName(uExitReason)));
-#endif
 
     /* Revert any IEM-only nested-guest execution policy if it was set earlier, otherwise return rcStrict. */
     IEM_VMX_R3_EXECPOLICY_IEM_ALL_DISABLE_RET(pVCpu, "VM-exit", rcStrict);
@@ -7422,7 +7418,7 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmlaunchVmresume(PVMCPU pVCpu, uint8_t cbInstr, VM
                                     IEM_VMX_R3_EXECPOLICY_IEM_ALL_ENABLE_RET(pVCpu, pszInstr, VINF_SUCCESS);
                                 }
 
-                                Log(("%s: VM-entry event injection failed. rc=%Rrc\n", VBOXSTRICTRC_VAL(rcStrict)));
+                                Log(("%s: VM-entry event injection failed. rc=%Rrc\n", pszInstr, VBOXSTRICTRC_VAL(rcStrict)));
                                 return rcStrict;
                             }
                             return iemVmxVmexit(pVCpu, VMX_EXIT_ERR_MSR_LOAD | VMX_EXIT_REASON_ENTRY_FAILED);

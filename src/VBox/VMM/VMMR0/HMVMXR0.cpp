@@ -1,4 +1,4 @@
-/* $Id: HMVMXR0.cpp 76751 2019-01-10 08:03:57Z vboxsync $ */
+/* $Id: HMVMXR0.cpp 76876 2019-01-18 08:35:13Z vboxsync $ */
 /** @file
  * HM VMX (Intel VT-x) - Host Context Ring-0.
  */
@@ -228,12 +228,30 @@
         } \
         else \
         { \
-            Log4Func(("hmR0VmxCheckExitDueToVmxInstr failed. rc=%Rrc\n", VBOXSTRICTRC_VAL(rcStrictTmp))); \
+            Log4Func(("hmR0VmxDecodeMemOperand failed. rc=%Rrc\n", VBOXSTRICTRC_VAL(rcStrictTmp))); \
             return rcStrictTmp; \
         } \
     } while (0)
 
-#endif  /* VBOX_WITH_NESTED_HWVIRT_VMX */
+# ifdef VBOX_WITH_NESTED_HWVIRT_ONLY_IN_IEM
+/** Macro that executes a VMX instruction in IEM. */
+#  define HMVMX_IEM_EXEC_VMX_INSTR_RET(a_pVCpu) \
+    do { \
+        int rc = HMVMX_CPUMCTX_IMPORT_STATE((a_pVCpu), HMVMX_CPUMCTX_EXTRN_ALL); \
+        AssertRCReturn(rc, rc); \
+        VBOXSTRICTRC rcStrict = IEMExecOne((a_pVCpu)); \
+        if (rcStrict == VINF_SUCCESS) \
+            ASMAtomicUoOrU64(&(a_pVCpu)->hm.s.fCtxChanged, HM_CHANGED_ALL_GUEST); \
+        else if (rcStrict == VINF_IEM_RAISED_XCPT) \
+        { \
+            rcStrict = VINF_SUCCESS; \
+            ASMAtomicUoOrU64(&(a_pVCpu)->hm.s.fCtxChanged, HM_CHANGED_RAISED_XCPT_MASK); \
+        } \
+        return VBOXSTRICTRC_VAL(rcStrict); \
+    } while (0)
+
+# endif /* VBOX_WITH_NESTED_HWVIRT_ONLY_IN_IEM */
+#endif /* VBOX_WITH_NESTED_HWVIRT_VMX */
 
 
 /*********************************************************************************************************************************
@@ -5878,6 +5896,7 @@ DECLINLINE(void) hmR0VmxSetPendingXcptSS(PVMCPU pVCpu, uint32_t u32ErrCode)
 }
 
 
+# ifndef VBOX_WITH_NESTED_HWVIRT_ONLY_IN_IEM
 /**
  * Decodes the memory operand of an instruction that caused a VM-exit.
  *
@@ -6143,7 +6162,7 @@ static VBOXSTRICTRC hmR0VmxCheckExitDueToVmxInstr(PVMCPU pVCpu, uint32_t uExitRe
 
     return VINF_SUCCESS;
 }
-
+# endif /* !VBOX_WITH_NESTED_HWVIRT_ONLY_IN_IEM */
 #endif /* VBOX_WITH_NESTED_HWVIRT_VMX */
 
 
@@ -13473,7 +13492,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmclear(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     }
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 
@@ -13497,7 +13516,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmlaunch(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     Assert(rcStrict != VINF_IEM_RAISED_XCPT);
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 
@@ -13536,7 +13555,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmptrld(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     }
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 
@@ -13575,7 +13594,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmptrst(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     }
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 
@@ -13615,7 +13634,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmread(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     }
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 
@@ -13639,7 +13658,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmresume(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     Assert(rcStrict != VINF_IEM_RAISED_XCPT);
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 
@@ -13679,7 +13698,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmwrite(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     }
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 
@@ -13710,7 +13729,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmxoff(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     }
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 
@@ -13749,7 +13768,7 @@ HMVMX_EXIT_DECL hmR0VmxExitVmxon(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
     }
     return rcStrict;
 #else
-    return VERR_EM_INTERPRETER;
+    HMVMX_IEM_EXEC_VMX_INSTR_RET(pVCpu);
 #endif
 }
 

@@ -1,4 +1,4 @@
-/* $Id: CPUM.cpp 76845 2019-01-17 04:35:19Z vboxsync $ */
+/* $Id: CPUM.cpp 76886 2019-01-18 10:57:02Z vboxsync $ */
 /** @file
  * CPUM - CPU Monitor / Manager.
  */
@@ -1148,7 +1148,8 @@ DECLCALLBACK(void) cpumR3InfoVmxFeatures(PVM pVM, PCDBGFINFOHLP pHlp, const char
     PCCPUMFEATURES pHostFeatures  = &pVM->cpum.s.HostFeatures;
     PCCPUMFEATURES pGuestFeatures = &pVM->cpum.s.GuestFeatures;
     if (   pHostFeatures->enmCpuVendor == CPUMCPUVENDOR_INTEL
-        || pHostFeatures->enmCpuVendor == CPUMCPUVENDOR_VIA)
+        || pHostFeatures->enmCpuVendor == CPUMCPUVENDOR_VIA
+        || pHostFeatures->enmCpuVendor == CPUMCPUVENDOR_SHANGHAI)
     {
 #define VMXFEATDUMP(a_szDesc, a_Var) \
         pHlp->pfnPrintf(pHlp, "  %s = %u (%u)\n", a_szDesc, pGuestFeatures->a_Var, pHostFeatures->a_Var)
@@ -1159,8 +1160,8 @@ DECLCALLBACK(void) cpumR3InfoVmxFeatures(PVM pVM, PCDBGFINFOHLP pHlp, const char
         /* Basic. */
         VMXFEATDUMP("InsOutInfo - INS/OUTS instruction info.                ", fVmxInsOutInfo);
         /* Pin-based controls. */
-        VMXFEATDUMP("ExtIntExit - External interrupt VM-exit                ", fVmxExtIntExit);
-        VMXFEATDUMP("NmiExit - NMI VM-exit                                  ", fVmxNmiExit);
+        VMXFEATDUMP("ExtIntExit - External interrupt exiting                ", fVmxExtIntExit);
+        VMXFEATDUMP("NmiExit - NMI exiting                                  ", fVmxNmiExit);
         VMXFEATDUMP("VirtNmi - Virtual NMIs                                 ", fVmxVirtNmi);
         VMXFEATDUMP("PreemptTimer - VMX preemption timer                    ", fVmxPreemptTimer);
         VMXFEATDUMP("PostedInt - Posted interrupts                          ", fVmxPostedInt);
@@ -1203,25 +1204,25 @@ DECLCALLBACK(void) cpumR3InfoVmxFeatures(PVM pVM, PCDBGFINFOHLP pHlp, const char
         VMXFEATDUMP("VmFuncs - Enable VM Functions                          ", fVmxVmFunc);
         VMXFEATDUMP("VmcsShadowing - VMCS shadowing                         ", fVmxVmcsShadowing);
         VMXFEATDUMP("RdseedExiting - RDSEED exiting                         ", fVmxRdseedExit);
-        VMXFEATDUMP("PML - Supports Page-Modification Log (PML)             ", fVmxPml);
+        VMXFEATDUMP("PML - Page-Modification Log (PML)                      ", fVmxPml);
         VMXFEATDUMP("EptVe - EPT violations can cause #VE                   ", fVmxEptXcptVe);
         VMXFEATDUMP("XsavesXRstors - Enable XSAVES/XRSTORS                  ", fVmxXsavesXrstors);
         /* VM-entry controls. */
         VMXFEATDUMP("EntryLoadDebugCtls - Load debug controls on VM-entry   ", fVmxEntryLoadDebugCtls);
         VMXFEATDUMP("Ia32eModeGuest - IA-32e mode guest                     ", fVmxIa32eModeGuest);
-        VMXFEATDUMP("EntryLoadEferMsr - Load IA32_EFER on VM-entry          ", fVmxEntryLoadEferMsr);
-        VMXFEATDUMP("EntryLoadPatMsr - Load IA32_PAT on VM-entry            ", fVmxEntryLoadPatMsr);
+        VMXFEATDUMP("EntryLoadEferMsr - Load IA32_EFER MSR on VM-entry      ", fVmxEntryLoadEferMsr);
+        VMXFEATDUMP("EntryLoadPatMsr - Load IA32_PAT MSR on VM-entry        ", fVmxEntryLoadPatMsr);
         /* VM-exit controls. */
         VMXFEATDUMP("ExitSaveDebugCtls - Save debug controls on VM-exit     ", fVmxExitSaveDebugCtls);
         VMXFEATDUMP("HostAddrSpaceSize - Host address-space size            ", fVmxHostAddrSpaceSize);
         VMXFEATDUMP("ExitAckExtInt - Acknowledge interrupt on VM-exit       ", fVmxExitAckExtInt);
-        VMXFEATDUMP("ExitSavePatMsr - Save IA32_PAT on VM-exit              ", fVmxExitSavePatMsr);
-        VMXFEATDUMP("ExitLoadPatMsr - Load IA32_PAT on VM-exit              ", fVmxExitLoadPatMsr);
-        VMXFEATDUMP("ExitSaveEferMsr - Save IA32_EFER on VM-exit            ", fVmxExitSaveEferMsr);
-        VMXFEATDUMP("ExitLoadEferMsr - Load IA32_EFER on VM-exit            ", fVmxExitLoadEferMsr);
+        VMXFEATDUMP("ExitSavePatMsr - Save IA32_PAT MSR on VM-exit          ", fVmxExitSavePatMsr);
+        VMXFEATDUMP("ExitLoadPatMsr - Load IA32_PAT MSR on VM-exit          ", fVmxExitLoadPatMsr);
+        VMXFEATDUMP("ExitSaveEferMsr - Save IA32_EFER MSR on VM-exit        ", fVmxExitSaveEferMsr);
+        VMXFEATDUMP("ExitLoadEferMsr - Load IA32_EFER MSR on VM-exit        ", fVmxExitLoadEferMsr);
         VMXFEATDUMP("SavePreemptTimer - Save VMX-preemption timer           ", fVmxSavePreemptTimer);
         /* Miscellaneous data. */
-        VMXFEATDUMP("ExitSaveEferLma - Save EFER.LMA on VM-exit             ", fVmxExitSaveEferLma);
+        VMXFEATDUMP("ExitSaveEferLma - Save IA32_EFER.LMA on VM-exit        ", fVmxExitSaveEferLma);
         VMXFEATDUMP("IntelPt - Intel PT (Processor Trace) in VMX operation  ", fVmxIntelPt);
         VMXFEATDUMP("VmwriteAll - Write allowed to read-only VMCS fields    ", fVmxVmwriteAll);
         VMXFEATDUMP("EntryInjectSoftInt - Inject softint. with 0-len instr. ", fVmxEntryInjectSoftInt);
@@ -1589,7 +1590,7 @@ void cpumR3InitVmxGuestFeaturesAndMsrs(PVM pVM, PCVMXMSRS pHostVmxMsrs, PVMXMSRS
     EmuFeat.fVmxUncondIoExit          = 1;
     EmuFeat.fVmxUseIoBitmaps          = 1;
     EmuFeat.fVmxMonitorTrapFlag       = 0;
-    EmuFeat.fVmxUseMsrBitmaps         = 0;
+    EmuFeat.fVmxUseMsrBitmaps         = 1;
     EmuFeat.fVmxMonitorExit           = 1;
     EmuFeat.fVmxPauseExit             = 1;
     EmuFeat.fVmxSecondaryExecCtls     = 1;
