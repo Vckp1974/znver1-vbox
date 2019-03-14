@@ -1,4 +1,4 @@
-/* $Id: VBoxGlobal.cpp 77238 2019-02-10 13:48:07Z vboxsync $ */
+/* $Id: VBoxGlobal.cpp 77264 2019-02-11 14:29:48Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBoxGlobal class implementation.
  */
@@ -2687,7 +2687,7 @@ DECLINLINE(int) visoWriteQuotedString(PRTSTREAM pStrmDst, const char *pszPrefix,
 }
 
 
-QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QString &strMachineName, const QString &strFolder)
+QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QString &strFolder, const QString &strMachineName /* = QString */)
 {
     QWidget *pDialogParent = windowManager().realParentWindow(pParent);
     QPointer<UIVisoCreator> pVisoCreator = new UIVisoCreator(pDialogParent, strMachineName);
@@ -2764,7 +2764,7 @@ QUuid VBoxGlobal::showCreateFloppyDiskDialog(QWidget *pParent, const QString &st
 {
     QWidget *pDialogParent = windowManager().realParentWindow(pParent);
 
-    UIFDCreationDialog *pDialog = new UIFDCreationDialog(pParent, strMachineName, strMachineFolder);
+    UIFDCreationDialog *pDialog = new UIFDCreationDialog(pParent, strMachineFolder, strMachineName);
     if (!pDialog)
         return QUuid();
     windowManager().registerNewParent(pDialog, pDialogParent);
@@ -3048,7 +3048,7 @@ void VBoxGlobal::updateMachineStorage(const CMachine &comConstMachine, const UIM
                 if (target.type == UIMediumTarget::UIMediumTargetType_WithID)
                     uMediumID = openMediumWithFileOpenDialog(target.mediumType, windowManager().mainWindowShown(), strMachineFolder);
                 else if(target.type == UIMediumTarget::UIMediumTargetType_CreateAdHocVISO)
-                    uMediumID = createVisoMediumWithVisoCreator(windowManager().mainWindowShown(), comConstMachine.GetName(), strMachineFolder);
+                    uMediumID = createVisoMediumWithVisoCreator(windowManager().mainWindowShown(), strMachineFolder, comConstMachine.GetName());
 
                 else if(target.type == UIMediumTarget::UIMediumTargetType_CreateFloppyDisk)
                     uMediumID = showCreateFloppyDiskDialog(windowManager().mainWindowShown(), comConstMachine.GetName(), strMachineFolder);

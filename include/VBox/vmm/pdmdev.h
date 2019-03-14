@@ -3388,9 +3388,9 @@ typedef struct PDMDEVHLPR3
     DECLR3CALLBACKMEMBER(void, pfnReserved5,(void));
     DECLR3CALLBACKMEMBER(void, pfnReserved6,(void));
     DECLR3CALLBACKMEMBER(void, pfnReserved7,(void));
-    //DECLR3CALLBACKMEMBER(void, pfnReserved8,(void));
-    //DECLR3CALLBACKMEMBER(void, pfnReserved9,(void));
-    //DECLR3CALLBACKMEMBER(void, pfnReserved10,(void));
+    /*DECLR3CALLBACKMEMBER(void, pfnReserved8,(void)); */
+    /*DECLR3CALLBACKMEMBER(void, pfnReserved9,(void)); */
+    /*DECLR3CALLBACKMEMBER(void, pfnReserved10,(void));*/
     /** @} */
 
 
@@ -4704,11 +4704,11 @@ DECLINLINE(int) PDMDevHlpPhysBulkGCPhys2CCPtrReadOnly(PPDMDEVINS pDevIns, uint32
 }
 
 /**
- * @copydoc PDMDEVHLPR3::pfnPhysReleasePageMappingLocks
+ * @copydoc PDMDEVHLPR3::pfnPhysBulkReleasePageMappingLocks
  */
-DECLINLINE(void) PDMDevHlpPhysBulkReleasePageMappingLocks(PPDMDEVINS pDevIns, uint32_t cLocks, PPGMPAGEMAPLOCK paLocks)
+DECLINLINE(void) PDMDevHlpPhysBulkReleasePageMappingLocks(PPDMDEVINS pDevIns, uint32_t cPages, PPGMPAGEMAPLOCK paLocks)
 {
-    pDevIns->CTX_SUFF(pHlp)->pfnPhysBulkReleasePageMappingLocks(pDevIns, cLocks, paLocks);
+    pDevIns->CTX_SUFF(pHlp)->pfnPhysBulkReleasePageMappingLocks(pDevIns, cPages, paLocks);
 }
 
 /**

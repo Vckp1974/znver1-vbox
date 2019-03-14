@@ -1,4 +1,4 @@
-/* $Id: UIGraphicsScrollBar.cpp 77223 2019-02-08 15:20:29Z vboxsync $ */
+/* $Id: UIGraphicsScrollBar.cpp 77268 2019-02-11 16:40:49Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIGraphicsScrollBar class implementation.
  */
@@ -108,9 +108,9 @@ void UIGraphicsScrollBarToken::paint(QPainter *pPainter, const QStyleOptionGraph
 
     /* Prepare color: */
     const QPalette pal = palette();
-    QColor backgroundColor = pal.color(QPalette::Active, QPalette::Window);
 
     /* Draw background: */
+    QColor backgroundColor = pal.color(QPalette::Active, QPalette::Window);
     pPainter->fillRect(pOptions->rect, backgroundColor);
 
     /* Restore painter: */
@@ -389,8 +389,13 @@ void UIGraphicsScrollBar::sltTokenMoved(const QPointF &pos)
         case Qt::Horizontal:
         {
             /* We have to calculate the X coord of the token, leaving Y untouched: */
+#ifdef VBOX_WS_MAC
+            const int iMin = 0;
+            const int iMax = size().width() - m_iExtent;
+#else
             const int iMin = m_iExtent;
             const int iMax = size().width() - 2 * m_iExtent;
+#endif
             int iX = pos.x() - m_iExtent / 2;
             iX = qMax(iX, iMin);
             iX = qMin(iX, iMax);
@@ -401,8 +406,13 @@ void UIGraphicsScrollBar::sltTokenMoved(const QPointF &pos)
         case Qt::Vertical:
         {
             /* We have to calculate the Y coord of the token, leaving X untouched: */
+#ifdef VBOX_WS_MAC
+            const int iMin = 0;
+            const int iMax = size().height() - m_iExtent;
+#else
             const int iMin = m_iExtent;
             const int iMax = size().height() - 2 * m_iExtent;
+#endif
             int iY = pos.y() - m_iExtent / 2;
             iY = qMax(iY, iMin);
             iY = qMin(iY, iMax);
@@ -420,30 +430,42 @@ void UIGraphicsScrollBar::sltTokenMoved(const QPointF &pos)
 
 void UIGraphicsScrollBar::sltStateLeftDefault()
 {
-    m_pButton1->hide();
-    m_pButton2->hide();
-    m_pToken->hide();
+    if (m_pButton1)
+        m_pButton1->hide();
+    if (m_pButton2)
+        m_pButton2->hide();
+    if (m_pToken)
+        m_pToken->hide();
 }
 
 void UIGraphicsScrollBar::sltStateLeftHovered()
 {
-    m_pButton1->hide();
-    m_pButton2->hide();
-    m_pToken->hide();
+    if (m_pButton1)
+        m_pButton1->hide();
+    if (m_pButton2)
+        m_pButton2->hide();
+    if (m_pToken)
+        m_pToken->hide();
 }
 
 void UIGraphicsScrollBar::sltStateEnteredDefault()
 {
-    m_pButton1->hide();
-    m_pButton2->hide();
-    m_pToken->hide();
+    if (m_pButton1)
+        m_pButton1->hide();
+    if (m_pButton2)
+        m_pButton2->hide();
+    if (m_pToken)
+        m_pToken->hide();
 }
 
 void UIGraphicsScrollBar::sltStateEnteredHovered()
 {
-    m_pButton1->show();
-    m_pButton2->show();
-    m_pToken->show();
+    if (m_pButton1)
+        m_pButton1->show();
+    if (m_pButton2)
+        m_pButton2->show();
+    if (m_pToken)
+        m_pToken->show();
 }
 
 void UIGraphicsScrollBar::prepare()
@@ -462,6 +484,13 @@ void UIGraphicsScrollBar::prepare()
 
 void UIGraphicsScrollBar::prepareWidgets()
 {
+    prepareButtons();
+    prepareToken();
+}
+
+void UIGraphicsScrollBar::prepareButtons()
+{
+#ifndef VBOX_WS_MAC
     /* Create buttons depending on orientation: */
     switch (m_enmOrientation)
     {
@@ -483,8 +512,7 @@ void UIGraphicsScrollBar::prepareWidgets()
     {
         /* We use 10px icons, not 16px, let buttons know that: */
         m_pButton1->setIconScaleIndex((double)10 / 16);
-        /* Also we want to have buttons react on mouse presses,
-         * not mouse releases, this also implies auto-repeat feature: */
+        /* Also we want to have buttons react on mouse presses for auto-repeat feature: */
         m_pButton1->setClickPolicy(UIGraphicsButton::ClickPolicy_OnPress);
         connect(m_pButton1, &UIGraphicsButton::sigButtonClicked,
                 this, &UIGraphicsScrollBar::sltButton1Clicked);
@@ -493,13 +521,16 @@ void UIGraphicsScrollBar::prepareWidgets()
     {
         /* We use 10px icons, not 16px, let buttons know that: */
         m_pButton2->setIconScaleIndex((double)10 / 16);
-        /* Also we want to have buttons react on mouse presses,
-         * not mouse releases, this also implies auto-repeat feature: */
+        /* Also we want to have buttons react on mouse presses for auto-repeat feature: */
         m_pButton2->setClickPolicy(UIGraphicsButton::ClickPolicy_OnPress);
         connect(m_pButton2, &UIGraphicsButton::sigButtonClicked,
                 this, &UIGraphicsScrollBar::sltButton2Clicked);
     }
+#endif
+}
 
+void UIGraphicsScrollBar::prepareToken()
+{
     /* Create token: */
     m_pToken = new UIGraphicsScrollBarToken(this);
     if (m_pToken)
@@ -583,8 +614,10 @@ void UIGraphicsScrollBar::updateExtent()
 {
     /* Make sure extent value is not smaller than the button size: */
     m_iExtent = QApplication::style()->pixelMetric(QStyle::PM_ScrollBarExtent);
+#ifndef VBOX_WS_MAC
     m_iExtent = qMax(m_iExtent, (int)m_pButton1->minimumSizeHint().width());
     m_iExtent = qMax(m_iExtent, (int)m_pButton2->minimumSizeHint().width());
+#endif
     updateGeometry();
 }
 
@@ -596,8 +629,10 @@ void UIGraphicsScrollBar::layoutWidgets()
 
 void UIGraphicsScrollBar::layoutButtons()
 {
-    /* We are calculating proper button shift delta, because
-     * button size can be smaller than scroll-bar extent value. */
+#ifndef VBOX_WS_MAC
+    // WORKAROUND:
+    // We are calculating proper button shift delta, because
+    // button size can be smaller than scroll-bar extent value.
 
     int iDelta1 = 0;
     if (m_iExtent > m_pButton1->minimumSizeHint().width())
@@ -608,6 +643,7 @@ void UIGraphicsScrollBar::layoutButtons()
     if (m_iExtent > m_pButton2->minimumSizeHint().width())
         iDelta2 = (m_iExtent - m_pButton2->minimumSizeHint().width() + 1) / 2;
     m_pButton2->setPos(size().width() - m_iExtent + iDelta2, size().height() - m_iExtent + iDelta2);
+#endif
 }
 
 void UIGraphicsScrollBar::layoutToken()
@@ -629,8 +665,13 @@ QPoint UIGraphicsScrollBar::actualTokenPosition() const
         case Qt::Horizontal:
         {
             /* We have to adjust the X coord of the token, leaving Y unchanged: */
+#ifdef VBOX_WS_MAC
+            const int iMin = 0;
+            const int iMax = size().width() - m_iExtent;
+#else
             const int iMin = m_iExtent;
             const int iMax = size().width() - 2 * m_iExtent;
+#endif
             int iX = dRatio * (iMax - iMin) + iMin;
             position = QPoint(iX, 0);
             break;
@@ -638,8 +679,13 @@ QPoint UIGraphicsScrollBar::actualTokenPosition() const
         case Qt::Vertical:
         {
             /* We have to adjust the Y coord of the token, leaving X unchanged: */
+#ifdef VBOX_WS_MAC
+            const int iMin = 0;
+            const int iMax = size().height() - m_iExtent;
+#else
             const int iMin = m_iExtent;
             const int iMax = size().height() - 2 * m_iExtent;
+#endif
             int iY = dRatio * (iMax - iMin) + iMin;
             position = QPoint(0, iY);
             break;
