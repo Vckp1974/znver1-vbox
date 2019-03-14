@@ -1,4 +1,4 @@
-/* $Id: IEMAllCImplVmxInstr.cpp.h 77358 2019-02-19 11:02:39Z vboxsync $ */
+/* $Id: IEMAllCImplVmxInstr.cpp.h 77410 2019-02-21 15:37:11Z vboxsync $ */
 /** @file
  * IEM - VT-x instruction implementation.
  */
@@ -2831,24 +2831,31 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexit(PVMCPU pVCpu, uint32_t uExitReason)
     pVmcs->u32EntryIntInfo &= ~VMX_ENTRY_INT_INFO_VALID;
 
     /*
-     * If we support storing EFER.LMA into IA32e-mode guest field on VM-exit, we need to do that now.
-     * See Intel spec. 27.2 "Recording VM-exit Information And Updating VM-entry Control".
-     */
-    if (IEM_GET_GUEST_CPU_FEATURES(pVCpu)->fVmxExitSaveEferLma)
-    {
-        if (pVCpu->cpum.GstCtx.msrEFER & MSR_K6_EFER_LMA)
-            pVmcs->u32EntryCtls |= VMX_ENTRY_CTLS_IA32E_MODE_GUEST;
-        else
-            pVmcs->u32EntryCtls &= ~VMX_ENTRY_CTLS_IA32E_MODE_GUEST;
-    }
-
-    /*
      * Save the guest state back into the VMCS.
      * We only need to save the state when the VM-entry was successful.
      */
     bool const fVmentryFailed = VMX_EXIT_REASON_HAS_ENTRY_FAILED(uExitReason);
     if (!fVmentryFailed)
     {
+        /*
+         * If we support storing EFER.LMA into IA32e-mode guest field on VM-exit, we need to do that now.
+         * See Intel spec. 27.2 "Recording VM-exit Information And Updating VM-entry Control".
+         *
+         * It is not clear from the Intel spec. if this is done only when VM-entry succeeds.
+         * If a VM-exit happens before loading guest EFER, we risk restoring the host EFER.LMA
+         * as guest-CPU state would not been modified. Hence for now, we do this only when
+         * the VM-entry succeeded.
+         */
+        /** @todo r=ramshankar: Figure out if this bit gets set to host EFER.LMA on real
+         *        hardware when VM-exit fails during VM-entry (e.g. VERR_VMX_INVALID_GUEST_STATE). */
+        if (IEM_GET_GUEST_CPU_FEATURES(pVCpu)->fVmxExitSaveEferLma)
+        {
+            if (pVCpu->cpum.GstCtx.msrEFER & MSR_K6_EFER_LMA)
+                pVmcs->u32EntryCtls |= VMX_ENTRY_CTLS_IA32E_MODE_GUEST;
+            else
+                pVmcs->u32EntryCtls &= ~VMX_ENTRY_CTLS_IA32E_MODE_GUEST;
+        }
+
         /*
          * The rest of the high bits of the VM-exit reason are only relevant when the VM-exit
          * occurs in enclave mode/SMM which we don't support yet.
@@ -5188,19 +5195,23 @@ IEM_STATIC int iemVmxVmentryCheckGuestControlRegsMsrs(PVMCPU pVCpu, const char *
         IEM_VMX_VMENTRY_FAILED_RET(pVCpu, pszInstr, pszFailure, kVmxVDiag_Vmentry_GuestPatMsr);
 
     /* EFER MSR. */
-    uint64_t const uValidEferMask = CPUMGetGuestEferMsrValidMask(pVCpu->CTX_SUFF(pVM));
-    if (   (pVmcs->u32EntryCtls & VMX_ENTRY_CTLS_LOAD_EFER_MSR)
-        && (pVmcs->u64GuestEferMsr.u & ~uValidEferMask))
-        IEM_VMX_VMENTRY_FAILED_RET(pVCpu, pszInstr, pszFailure, kVmxVDiag_Vmentry_GuestEferMsrRsvd);
+    if (pVmcs->u32EntryCtls & VMX_ENTRY_CTLS_LOAD_EFER_MSR)
+    {
+        uint64_t const uValidEferMask = CPUMGetGuestEferMsrValidMask(pVCpu->CTX_SUFF(pVM));
+        if (!(pVmcs->u64GuestEferMsr.u & ~uValidEferMask))
+        { /* likely */ }
+        else
+            IEM_VMX_VMENTRY_FAILED_RET(pVCpu, pszInstr, pszFailure, kVmxVDiag_Vmentry_GuestEferMsrRsvd);
 
-    bool const fGstLma = RT_BOOL(pVmcs->u64HostEferMsr.u & MSR_K6_EFER_BIT_LMA);
-    bool const fGstLme = RT_BOOL(pVmcs->u64HostEferMsr.u & MSR_K6_EFER_BIT_LME);
-    if (   fGstInLongMode == fGstLma
-        && (   !(pVmcs->u64GuestCr0.u & X86_CR0_PG)
-            || fGstLma == fGstLme))
-    { /* likely */ }
-    else
-        IEM_VMX_VMENTRY_FAILED_RET(pVCpu, pszInstr, pszFailure, kVmxVDiag_Vmentry_GuestEferMsr);
+        bool const fGstLma = RT_BOOL(pVmcs->u64GuestEferMsr.u & MSR_K6_EFER_LMA);
+        bool const fGstLme = RT_BOOL(pVmcs->u64GuestEferMsr.u & MSR_K6_EFER_LME);
+        if (   fGstLma == fGstInLongMode
+            && (   !(pVmcs->u64GuestCr0.u & X86_CR0_PG)
+                || fGstLma == fGstLme))
+        { /* likely */ }
+        else
+            IEM_VMX_VMENTRY_FAILED_RET(pVCpu, pszInstr, pszFailure, kVmxVDiag_Vmentry_GuestEferMsr);
+    }
 
     /* We don't support IA32_BNDCFGS MSR yet. */
     Assert(!(pVmcs->u32EntryCtls & VMX_ENTRY_CTLS_LOAD_BNDCFGS_MSR));
@@ -5422,7 +5433,7 @@ IEM_STATIC int iemVmxVmentryCheckGuestSegRegs(PVMCPU pVCpu, const char *pszInstr
                 IEM_VMX_VMENTRY_FAILED_RET(pVCpu, pszInstr, pszFailure, kVmxVDiag_Vmentry_GuestSegAttrSsType);
 
             /* DPL. */
-            if (fUnrestrictedGuest)
+            if (!fUnrestrictedGuest)
             {
                 if (uDpl == (SelReg.Sel & X86_SEL_RPL))
                 { /* likely */ }
@@ -5431,7 +5442,7 @@ IEM_STATIC int iemVmxVmentryCheckGuestSegRegs(PVMCPU pVCpu, const char *pszInstr
             }
             X86DESCATTR AttrCs; AttrCs.u = pVmcs->u32GuestCsAttr;
             if (   AttrCs.n.u4Type == (X86_SEL_TYPE_RW | X86_SEL_TYPE_ACCESSED)
-                || (pVmcs->u64GuestCr0.u & X86_CR0_PE))
+                || !(pVmcs->u64GuestCr0.u & X86_CR0_PE))
             {
                 if (uDpl == 0)
                 { /* likely */ }

@@ -1,4 +1,4 @@
-/* $Id: VBoxDbgConsole.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
+/* $Id: VBoxDbgConsole.cpp 77412 2019-02-21 18:25:37Z vboxsync $ */
 /** @file
  * VBox Debugger GUI - Console.
  */
@@ -21,6 +21,7 @@
 *********************************************************************************************************************************/
 #define LOG_GROUP LOG_GROUP_DBGG
 #include "VBoxDbgConsole.h"
+#include "VBoxDbgGui.h"
 
 #include <QLabel>
 #include <QApplication>
@@ -482,14 +483,12 @@ VBoxDbgConsoleInput::returnPressed()
 
 
 VBoxDbgConsole::VBoxDbgConsole(VBoxDbgGui *a_pDbgGui, QWidget *a_pParent/* = NULL*/, IVirtualBox *a_pVirtualBox/* = NULL */)
-    : VBoxDbgBaseWindow(a_pDbgGui, a_pParent), m_pOutput(NULL), m_pInput(NULL), m_fInputRestoreFocus(false),
+    : VBoxDbgBaseWindow(a_pDbgGui, a_pParent, "Console"), m_pOutput(NULL), m_pInput(NULL), m_fInputRestoreFocus(false),
     m_pszInputBuf(NULL), m_cbInputBuf(0), m_cbInputBufAlloc(0),
     m_pszOutputBuf(NULL), m_cbOutputBuf(0), m_cbOutputBufAlloc(0),
     m_pTimer(NULL), m_fUpdatePending(false), m_Thread(NIL_RTTHREAD), m_EventSem(NIL_RTSEMEVENT),
     m_fTerminate(false), m_fThreadTerminated(false)
 {
-    setWindowTitle("VBoxDbg - Console");
-
     /*
      * Create the output text box.
      */
