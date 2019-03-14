@@ -1,4 +1,4 @@
-/* $Id: dirops.c 77534 2019-03-01 15:12:26Z vboxsync $ */
+/* $Id: dirops.c 77539 2019-03-02 20:47:13Z vboxsync $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, directory inode and file operations.
  */
@@ -33,75 +33,7 @@
 
 
 /**
- * Reads or re-reads a directory.
- *
- * @note As suggested a couple of other places, we should probably stop
- *       reading in the whole directory on open.
- */
-static int vbsf_dir_open_worker(struct vbsf_super_info *sf_g, struct vbsf_dir_info *sf_d,
-                                struct vbsf_inode_info *sf_i, const char *pszCaller)
-{
-    int rc;
-    int err;
-    union SfDirOpenCloseReq
-    {
-        VBOXSFCREATEREQ Create;
-        VBOXSFCLOSEREQ  Close;
-    } *pReq;
-
-    pReq = (union SfDirOpenCloseReq *)VbglR0PhysHeapAlloc(RT_UOFFSETOF(VBOXSFCREATEREQ, StrPath.String) + sf_i->path->u16Size);
-    if (pReq) {
-        memcpy(&pReq->Create.StrPath, sf_i->path, SHFLSTRING_HEADER_SIZE + sf_i->path->u16Size);
-    } else {
-        LogRelMaxFunc(64, ("failed to allocate %zu bytes for '%s' [caller: %s]\n",
-                           RT_UOFFSETOF(VBOXSFCREATEREQ, StrPath.String) + sf_i->path->u16Size,
-                           sf_i->path->String.ach, pszCaller));
-        return -ENOMEM;
-    }
-
-    RT_ZERO(pReq->Create.CreateParms);
-    pReq->Create.CreateParms.Handle      = SHFL_HANDLE_NIL;
-    pReq->Create.CreateParms.CreateFlags = SHFL_CF_DIRECTORY
-                                         | SHFL_CF_ACT_OPEN_IF_EXISTS
-                                         | SHFL_CF_ACT_FAIL_IF_NEW
-                                         | SHFL_CF_ACCESS_READ;
-
-    LogFunc(("calling VbglR0SfHostReqCreate on folder %s, flags %#x [caller: %s]\n",
-             sf_i->path->String.utf8, pReq->Create.CreateParms.CreateFlags, pszCaller));
-    rc = VbglR0SfHostReqCreate(sf_g->map.root, &pReq->Create);
-    if (RT_SUCCESS(rc)) {
-        if (pReq->Create.CreateParms.Result == SHFL_FILE_EXISTS) {
-
-            /** @todo We could refresh the inode information here since SHFL_FN_CREATE
-             * returns updated object information. */
-
-            /** @todo Touch the dentries from here to the mount root since a successful
-             * open means that the whole path is valid.  I believe CIFS does this. */
-
-            /** @todo Reading all entries upon opening the directory doesn't seem like
-             * a good idea. */
-            vbsf_dir_info_empty(sf_d);
-            err = vbsf_dir_read_all(sf_g, sf_i, sf_d, pReq->Create.CreateParms.Handle);
-        } else
-            err = -ENOENT;
-
-        AssertCompile(RTASSERT_OFFSET_OF(VBOXSFCREATEREQ, CreateParms.Handle) > sizeof(VBOXSFCLOSEREQ)); /* no aliasing issues */
-        if (pReq->Create.CreateParms.Handle != SHFL_HANDLE_NIL)
-        {
-        rc = VbglR0SfHostReqClose(sf_g->map.root, &pReq->Close, pReq->Create.CreateParms.Handle);
-        if (RT_FAILURE(rc))
-            LogFunc(("VbglR0SfHostReqCloseSimple(%s) after err=%d failed rc=%Rrc caller=%s\n",
-                     sf_i->path->String.utf8, err, rc, pszCaller));
-        }
-    } else
-        err = -EPERM;
-
-    VbglR0PhysHeapFree(pReq);
-    return err;
-}
-
-/**
- * Open a directory. Read the complete content into a buffer.
+ * Open a directory.
  *
  * @param inode     inode
  * @param file      file
@@ -111,32 +43,88 @@ static int vbsf_dir_open(struct inode *inode, struct file *file)
 {
     struct vbsf_super_info *sf_g = VBSF_GET_SUPER_INFO(inode->i_sb);
     struct vbsf_inode_info *sf_i = VBSF_GET_INODE_INFO(inode);
-    struct vbsf_dir_info *sf_d;
-    int err;
+    struct dentry          *dentry = VBSF_GET_F_DENTRY(file);
+    struct vbsf_dir_info   *sf_d;
+    int                     rc;
 
-    TRACE();
-    BUG_ON(!sf_g);
-    BUG_ON(!sf_i);
+    SFLOGFLOW(("vbsf_dir_open: inode=%p file=%p %s\n", inode, file, sf_i && sf_i->path ? sf_i->path->String.ach : NULL));
+    AssertReturn(sf_g, -EINVAL);
+    AssertReturn(sf_i, -EINVAL);
+    AssertReturn(!file->private_data, 0);
 
-    if (file->private_data) {
-        LogFunc(("called on already opened directory '%s'!\n", sf_i->path->String.ach));
-        return 0;
-    }
+    /*
+     * Allocate and initialize our directory info structure.
+     * We delay buffer allocation until vbsf_getdent is actually used.
+     */
+    sf_d = kmalloc(sizeof(*sf_d), GFP_KERNEL);
+    if (sf_d) {
+        VBOXSFCREATEREQ *pReq;
+        RT_ZERO(*sf_d);
+        sf_d->u32Magic = VBSF_DIR_INFO_MAGIC;
+        sema_init(&sf_d->Lock, 1);
 
-    sf_d = vbsf_dir_info_alloc();
-    if (!sf_d) {
-        LogRelFunc(("could not allocate directory info for '%s'\n", sf_i->path->String.ach));
-        return -ENOMEM;
-    }
+        /*
+         * Try open the directory.
+         */
+        pReq = (VBOXSFCREATEREQ *)VbglR0PhysHeapAlloc(RT_UOFFSETOF(VBOXSFCREATEREQ, StrPath.String) + sf_i->path->u16Size);
+        if (pReq) {
+            memcpy(&pReq->StrPath, sf_i->path, SHFLSTRING_HEADER_SIZE + sf_i->path->u16Size);
+            RT_ZERO(pReq->CreateParms);
+            pReq->CreateParms.Handle      = SHFL_HANDLE_NIL;
+            pReq->CreateParms.CreateFlags = SHFL_CF_DIRECTORY
+                                          | SHFL_CF_ACT_OPEN_IF_EXISTS
+                                          | SHFL_CF_ACT_FAIL_IF_NEW
+                                          | SHFL_CF_ACCESS_READ;
 
-    err = vbsf_dir_open_worker(sf_g, sf_d, sf_i, "vbsf_dir_open");
-    if (!err)
-        file->private_data = sf_d;
-    else
-        vbsf_dir_info_free(sf_d);
+            LogFunc(("calling VbglR0SfHostReqCreate on folder %s, flags %#x\n",
+                     sf_i->path->String.utf8, pReq->CreateParms.CreateFlags));
+            rc = VbglR0SfHostReqCreate(sf_g->map.root, pReq);
+            if (RT_SUCCESS(rc)) {
+                if (pReq->CreateParms.Result == SHFL_FILE_EXISTS) {
+                    Assert(pReq->CreateParms.Handle != SHFL_HANDLE_NIL);
 
-    return err;
+                    /*
+                     * Update the inode info with fresh stats and increase the TTL for the
+                     * dentry cache chain that got us here.
+                     */
+                    vbsf_update_inode(inode, sf_i, &pReq->CreateParms.Info, sf_g, true /*fLocked*/ /** @todo inode locking */);
+                    vbsf_dentry_chain_increase_ttl(dentry);
+
+                    sf_d->Handle.hHost  = pReq->CreateParms.Handle;
+                    sf_d->Handle.cRefs  = 1;
+                    sf_d->Handle.fFlags = VBSF_HANDLE_F_READ | VBSF_HANDLE_F_DIR | VBSF_HANDLE_F_MAGIC;
+                    vbsf_handle_append(sf_i, &sf_d->Handle);
+
+                    file->private_data = sf_d;
+                    VbglR0PhysHeapFree(pReq);
+                    return 0;
+
+                }
+                Assert(pReq->CreateParms.Handle == SHFL_HANDLE_NIL);
+
+                /*
+                 * Directory does not exist, so we probably got some invalid
+                 * dir cache and inode info.
+                 */
+                /** @todo do more to invalidate dentry and inode here. */
+                vbsf_dentry_set_update_jiffies(dentry, jiffies + INT_MAX / 2);
+                sf_i->force_restat = true;
+                rc = -ENOENT;
+            } else
+                rc = -EPERM;
+            VbglR0PhysHeapFree(pReq);
+        } else {
+            LogRelMaxFunc(64, ("failed to allocate %zu bytes for '%s'\n",
+                               RT_UOFFSETOF(VBOXSFCREATEREQ, StrPath.String) + sf_i->path->u16Size, sf_i->path->String.ach));
+            rc = -ENOMEM;
+        }
+        sf_d->u32Magic = VBSF_DIR_INFO_MAGIC_DEAD;
+        kfree(sf_d);
+    } else
+        rc = -ENOMEM;
+    return rc;
 }
+
 
 /**
  * This is called when reference count of [file] goes to zero. Notify
@@ -149,120 +137,154 @@ static int vbsf_dir_open(struct inode *inode, struct file *file)
  */
 static int vbsf_dir_release(struct inode *inode, struct file *file)
 {
+    struct vbsf_dir_info *sf_d = (struct vbsf_dir_info *)file->private_data;
+
     TRACE();
 
-    if (file->private_data)
-        vbsf_dir_info_free(file->private_data);
+    if (sf_d) {
+        struct vbsf_super_info *sf_g = VBSF_GET_SUPER_INFO(inode->i_sb);
+
+        /* Invalidate the non-handle part. */
+        sf_d->u32Magic     = VBSF_DIR_INFO_MAGIC_DEAD;
+        sf_d->cEntriesLeft = 0;
+        sf_d->cbValid      = 0;
+        sf_d->pEntry       = NULL;
+        sf_d->fNoMoreFiles = false;
+        if (sf_d->pBuf) {
+            kfree(sf_d->pBuf);
+            sf_d->pBuf = NULL;
+        }
+
+        /* Closes the handle and frees the structure when the last reference is released. */
+        vbsf_handle_release(&sf_d->Handle, sf_g, "vbsf_dir_release");
+    }
 
     return 0;
 }
 
+
 /**
- * Translate RTFMODE into DT_xxx (in conjunction to rtDirType())
+ * Translate RTFMODE into DT_xxx (in conjunction to rtDirType()).
  * @param fMode     file mode
  * returns d_type
  */
 static int vbsf_get_d_type(RTFMODE fMode)
 {
-    int d_type;
     switch (fMode & RTFS_TYPE_MASK) {
-        case RTFS_TYPE_FIFO:
-            d_type = DT_FIFO;
-            break;
-        case RTFS_TYPE_DEV_CHAR:
-            d_type = DT_CHR;
-            break;
-        case RTFS_TYPE_DIRECTORY:
-            d_type = DT_DIR;
-            break;
-        case RTFS_TYPE_DEV_BLOCK:
-            d_type = DT_BLK;
-            break;
-        case RTFS_TYPE_FILE:
-            d_type = DT_REG;
-            break;
-        case RTFS_TYPE_SYMLINK:
-            d_type = DT_LNK;
-            break;
-        case RTFS_TYPE_SOCKET:
-            d_type = DT_SOCK;
-            break;
-        case RTFS_TYPE_WHITEOUT:
-            d_type = DT_WHT;
-            break;
-        default:
-            d_type = DT_UNKNOWN;
-            break;
+        case RTFS_TYPE_FIFO:        return DT_FIFO;
+        case RTFS_TYPE_DEV_CHAR:    return DT_CHR;
+        case RTFS_TYPE_DIRECTORY:   return DT_DIR;
+        case RTFS_TYPE_DEV_BLOCK:   return DT_BLK;
+        case RTFS_TYPE_FILE:        return DT_REG;
+        case RTFS_TYPE_SYMLINK:     return DT_LNK;
+        case RTFS_TYPE_SOCKET:      return DT_SOCK;
+        case RTFS_TYPE_WHITEOUT:    return DT_WHT;
     }
-    return d_type;
+    return DT_UNKNOWN;
+}
+
+
+/**
+ * Refills the buffer with more entries.
+ *
+ * @returns 0 on success, negative errno on error,
+ */
+static int vbsf_dir_read_more(struct vbsf_dir_info *sf_d, struct vbsf_super_info *sf_g, bool fRestart)
+{
+    int               rc;
+    VBOXSFLISTDIRREQ *pReq;
+
+    /*
+     * Don't call the host again if we've reached the end of the
+     * directory entries already.
+     */
+    if (sf_d->fNoMoreFiles) {
+        if (!fRestart)
+            return 0;
+        sf_d->fNoMoreFiles = false;
+    }
+
+
+    /*
+     * Make sure we've got some kind of buffers.
+     */
+    if (sf_d->pBuf) {
+        /* Likely, except for the first time. */
+    } else {
+        /** @todo make the buffer size configurable. */
+        sf_d->pBuf = (PSHFLDIRINFO)kmalloc(_64K, GFP_KERNEL);
+        if (sf_d->pBuf)
+            sf_d->cbBuf = _64K;
+        else {
+            sf_d->pBuf = (PSHFLDIRINFO)kmalloc(_4K, GFP_KERNEL);
+            if (!sf_d->pBuf) {
+                LogRelMax(10, ("vbsf_dir_read_more: Failed to allocate buffer!\n"));
+                return -ENOMEM;
+            }
+            sf_d->cbBuf = _4K;
+        }
+    }
+
+    /*
+     * Allocate a request buffer.
+     */
+    pReq = (VBOXSFLISTDIRREQ *)VbglR0PhysHeapAlloc(sizeof(*pReq));
+    if (pReq) {
+        rc = VbglR0SfHostReqListDirContig2x(sf_g->map.root, pReq, sf_d->Handle.hHost, NULL, NIL_RTGCPHYS64,
+                                            fRestart ? SHFL_LIST_RESTART : SHFL_LIST_NONE,
+                                            sf_d->pBuf, virt_to_phys(sf_d->pBuf), sf_d->cbBuf);
+        if (RT_SUCCESS(rc)) {
+            sf_d->pEntry       = sf_d->pBuf;
+            sf_d->cbValid      = pReq->Parms.cb32Buffer.u.value32;
+            sf_d->cEntriesLeft = pReq->Parms.c32Entries.u.value32;
+            sf_d->fNoMoreFiles = pReq->Parms.f32More.u.value32 == 0;
+        } else {
+            sf_d->pEntry       = sf_d->pBuf;
+            sf_d->cbValid      = 0;
+            sf_d->cEntriesLeft = 0;
+            if (rc == VERR_NO_MORE_FILES) {
+                sf_d->fNoMoreFiles = true;
+                rc = 0;
+            } else {
+                /* In theory we could end up here with a buffer overflow, but
+                   with a 4KB minimum buffer size that's very unlikely with the
+                   typical filename length of today's file systems (2019). */
+                LogRelMax(16, ("vbsf_dir_read_more: VbglR0SfHostReqListDirContig2x -> %Rrc\n", rc));
+                rc = -EPROTO;
+            }
+        }
+        VbglR0PhysHeapFree(pReq);
+    } else
+        rc = -ENOMEM;
+    return rc;
 }
 
 /**
- * Extract element ([dir]->f_pos) from the directory [dir] into [d_name].
- *
- * @returns 0 for success, 1 for end reached, Linux error code otherwise.
+ * Helper function for when we need to convert the name, avoids wasting stack in
+ * the UTF-8 code path.
  */
-static int vbsf_getdent(struct file *dir, char d_name[NAME_MAX], int *d_type)
+DECL_NO_INLINE(static, bool) vbsf_dir_emit_nls(
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+                                               struct dir_context *ctx,
+# else
+                                               void *opaque, filldir_t filldir, loff_t offPos,
+# endif
+                                               const char *pszSrcName, uint16_t cchSrcName, ino_t d_ino, int d_type,
+                                               struct vbsf_super_info *sf_g)
 {
-    loff_t cur;
-    struct vbsf_super_info *sf_g;
-    struct vbsf_dir_info *sf_d;
-    struct vbsf_inode_info *sf_i;
-    struct inode *inode;
-    struct list_head *pos, *list;
-
-    TRACE();
-
-    inode = VBSF_GET_F_DENTRY(dir)->d_inode;
-    sf_i = VBSF_GET_INODE_INFO(inode);
-    sf_g = VBSF_GET_SUPER_INFO(inode->i_sb);
-    sf_d = dir->private_data;
-
-    BUG_ON(!sf_g);
-    BUG_ON(!sf_d);
-    BUG_ON(!sf_i);
-
-    if (sf_i->force_reread) {
-        int err = vbsf_dir_open_worker(sf_g, sf_d, sf_i, "vbsf_getdent");
-        if (!err) {
-            sf_i->force_reread = 0;
-        } else {
-            if (err == -ENOENT) {
-                vbsf_dir_info_free(sf_d);
-                dir->private_data = NULL;
-            }
-            return err;
-        }
+    char szDstName[NAME_MAX];
+    int rc = vbsf_nlscpy(sf_g, szDstName, sizeof(szDstName), pszSrcName, cchSrcName + 1);
+    if (rc == 0) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+        return dir_emit(ctx, szDstName, strlen(szDstName), d_ino, d_type);
+#else
+        return filldir(opaque, szDstName, strlen(szDstName), offPos, d_ino, d_type) == 0;
+#endif
     }
-
-    cur = 0;
-    list = &sf_d->info_list;
-    list_for_each(pos, list) {
-        struct vbsf_dir_buf *b;
-        SHFLDIRINFO *info;
-        loff_t i;
-
-        b = list_entry(pos, struct vbsf_dir_buf, head);
-        if (dir->f_pos >= cur + b->cEntries) {
-            cur += b->cEntries;
-            continue;
-        }
-
-        for (i = 0, info = b->buf; i < dir->f_pos - cur; ++i) {
-            size_t size;
-
-            size = offsetof(SHFLDIRINFO, name.String)
-                 + info->name.u16Size;
-            info = (SHFLDIRINFO *)((uintptr_t)info + size);
-        }
-
-        *d_type = vbsf_get_d_type(info->Info.Attr.fMode);
-
-        return vbsf_nlscpy(sf_g, d_name, NAME_MAX, info->name.String.utf8, info->name.u16Length);
-    }
-
-    return 1;
+    /* Assuming this is a buffer overflow issue, just silently skip it. */
+    return true;
 }
+
 
 /**
  * This is called when vfs wants to populate internal buffers with
@@ -293,73 +315,230 @@ static int vbsf_dir_iterate(struct file *dir, struct dir_context *ctx)
 static int vbsf_dir_read(struct file *dir, void *opaque, filldir_t filldir)
 #endif
 {
-    TRACE();
-    for (;;) {
-        int err;
-        ino_t fake_ino;
-        loff_t sanity;
-        char d_name[NAME_MAX];
-        int d_type = DT_UNKNOWN;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+    loff_t                  offPos  = ctx->pos;
+#else
+    loff_t                  offPos  = dir->f_pos;
+#endif
+    struct vbsf_dir_info   *sf_d    = (struct vbsf_dir_info *)dir->private_data;
+    struct vbsf_super_info *sf_g    = VBSF_GET_SUPER_INFO(VBSF_GET_F_DENTRY(dir)->d_sb);
+    int                     rc;
 
-        err = vbsf_getdent(dir, d_name, &d_type);
-        switch (err) {
-            case 1:
+    /*
+     * Lock the directory info structures.
+     */
+    if (RT_LIKELY(down_interruptible(&sf_d->Lock) == 0)) {
+        /* likely */
+    } else
+        return -ERESTARTSYS;
+
+    /*
+     * Any seek performed in the mean time?
+     */
+    if (offPos == sf_d->offPos) {
+        /* likely */
+    } else {
+        /* Restart the search if iPos is lower than the current buffer position. */
+        loff_t offCurEntry = sf_d->offPos;
+        if (offPos < offCurEntry) {
+            rc = vbsf_dir_read_more(sf_d, sf_g, true /*fRestart*/);
+            if (rc == 0)
+                offCurEntry = 0;
+            else {
+                up(&sf_d->Lock);
+                return rc;
+            }
+        }
+
+        /* Skip ahead to offPos. */
+        while (offCurEntry < offPos) {
+            uint32_t cEntriesLeft = sf_d->cEntriesLeft;
+            if ((uint64_t)(offPos - offCurEntry) >= cEntriesLeft) {
+                /* Skip the current buffer and read the next: */
+                offCurEntry       += cEntriesLeft;
+                sf_d->offPos       = offCurEntry;
+                sf_d->cEntriesLeft = 0;
+                rc = vbsf_dir_read_more(sf_d, sf_g, false /*fRestart*/);
+                if (rc != 0 || sf_d->cEntriesLeft == 0) {
+                    up(&sf_d->Lock);
+                    return rc;
+                }
+            } else {
+                do
+                {
+                    PSHFLDIRINFO pEntry = sf_d->pEntry;
+                    pEntry = (PSHFLDIRINFO)&pEntry->name.String.utf8[pEntry->name.u16Length];
+                    AssertLogRelBreakStmt(   cEntriesLeft == 1
+                                          ||    (uintptr_t)pEntry - (uintptr_t)sf_d->pBuf
+                                             <= sf_d->cbValid - RT_UOFFSETOF(SHFLDIRINFO, name.String),
+                                          sf_d->cEntriesLeft = 0);
+                    sf_d->cEntriesLeft  = --cEntriesLeft;
+                    sf_d->offPos        = ++offCurEntry;
+                } while (offPos < sf_d->offPos);
+            }
+        }
+    }
+
+    /*
+     * Handle '.' and '..' specially so we get the inode numbers right.
+     * We'll skip any '.' or '..' returned by the host (included in pos,
+     * however, to simplify the above skipping code).
+     */
+    if (offPos < 2) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+        if (offPos == 0) {
+            if (dir_emit_dot(dir, ctx))
+                dir->f_pos = ctx->pos = sf_d->offPos = offPos = 1;
+            else {
+                up(&sf_d->Lock);
                 return 0;
-
-            case 0:
-                break;
-
-            case -1:
-            default:
-                /* skip erroneous entry and proceed */
-                LogFunc(("vbsf_getdent error %d\n", err));
-                dir->f_pos += 1;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
-                ctx->pos += 1;
-#endif
-                continue;
+            }
         }
-
-        /* d_name now contains a valid entry name */
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
-        sanity = ctx->pos + 0xbeef;
-#else
-        sanity = dir->f_pos + 0xbeef;
-#endif
-        fake_ino = sanity;
-        if (sanity - fake_ino) {
-            LogRelFunc(("can not compute ino\n"));
-            return -EINVAL;
-        }
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
-        if (!dir_emit(ctx, d_name, strlen(d_name), fake_ino, d_type)) {
-            LogFunc(("dir_emit failed\n"));
-            return 0;
+        if (offPos == 1) {
+            if (dir_emit_dotdot(dir, ctx))
+                dir->f_pos = ctx->pos = sf_d->offPos = offPos = 2;
+            else {
+                up(&sf_d->Lock);
+                return 0;
+            }
         }
 #else
-        err = filldir(opaque, d_name, strlen(d_name),
-                  dir->f_pos, fake_ino, d_type);
-        if (err) {
-            LogFunc(("filldir returned error %d\n", err));
-            /* Rely on the fact that filldir returns error
-               only when it runs out of space in opaque */
-            return 0;
+        if (offPos == 0) {
+            rc = filldir(opaque, ".", 1, 0, VBSF_GET_F_DENTRY(dir)->d_inode->i_ino, DT_DIR);
+            if (!rc)
+                dir->f_pos = sf_d->offPos = offPos = 1;
+            else {
+                up(&sf_d->Lock);
+                return 0;
+            }
         }
-#endif
-
-        dir->f_pos += 1;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
-        ctx->pos += 1;
+        if (offPos == 1) {
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 5)
+            rc = filldir(opaque, "..", 2, 1, parent_ino(VBSF_GET_F_DENTRY(dir)), DT_DIR);
+# else
+            rc = filldir(opaque, "..", 2, 1, VBSF_GET_F_DENTRY(dir)->d_parent->d_inode->i_ino, DT_DIR);
+# endif
+            if (!rc)
+                dir->f_pos = sf_d->offPos = offPos = 2;
+            else {
+                up(&sf_d->Lock);
+                return 0;
+            }
+        }
 #endif
     }
 
-    BUG();
+    /*
+     * Produce stuff.
+     */
+    Assert(offPos == sf_d->offPos);
+    for (;;) {
+        PSHFLDIRINFO pBuf;
+        PSHFLDIRINFO pEntry;
+
+        /*
+         * Do we need to read more?
+         */
+        uint32_t cbValid      = sf_d->cbValid;
+        uint32_t cEntriesLeft = sf_d->cEntriesLeft;
+        if (!cEntriesLeft) {
+            rc = vbsf_dir_read_more(sf_d, sf_g, false /*fRestart*/);
+            if (rc == 0) {
+                cEntriesLeft = sf_d->cEntriesLeft;
+                if (!cEntriesLeft) {
+                    up(&sf_d->Lock);
+                    return 0;
+                }
+                cbValid = sf_d->cbValid;
+            } else {
+                up(&sf_d->Lock);
+                return rc;
+            }
+        }
+
+        /*
+         * Feed entries to the caller.
+         */
+        pBuf   = sf_d->pBuf;
+        pEntry = sf_d->pEntry;
+        do {
+            /*
+             * Validate the entry in case the host is messing with us.
+             * We're ASSUMING the host gives us a zero terminated string (UTF-8) here.
+             */
+            uintptr_t const offEntryInBuf = (uintptr_t)pEntry - (uintptr_t)pBuf;
+            uint16_t        cbSrcName;
+            uint16_t        cchSrcName;
+            AssertLogRelMsgBreak(offEntryInBuf + RT_UOFFSETOF(SHFLDIRINFO, name.String) <= cbValid,
+                                 ("%#llx + %#x vs %#x\n", offEntryInBuf, RT_UOFFSETOF(SHFLDIRINFO, name.String), cbValid));
+            cbSrcName  = pEntry->name.u16Size;
+            cchSrcName = pEntry->name.u16Length;
+            AssertLogRelBreak(offEntryInBuf + RT_UOFFSETOF(SHFLDIRINFO, name.String) + cbSrcName <= cbValid);
+            AssertLogRelBreak(cchSrcName < cbSrcName);
+            AssertLogRelBreak(pEntry->name.String.ach[cchSrcName] == '\0');
+
+            /*
+             * Filter out '.' and '..' entires.
+             */
+            if (   cchSrcName > 2
+                || pEntry->name.String.ach[0] != '.'
+                || (   cchSrcName == 2
+                    && pEntry->name.String.ach[1] != '.')) {
+                int const   d_type = vbsf_get_d_type(pEntry->Info.Attr.fMode);
+                ino_t const d_ino  = (ino_t)offPos + 0xbeef; /* very fake */
+                bool        fContinue;
+                if (sf_g->fNlsIsUtf8) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+                    fContinue = dir_emit(ctx, pEntry->name.String.ach, cchSrcName, d_ino, d_type);
+#else
+                    fContinue = filldir(opaque, pEntry->name.String.ach, cchSrcName, offPos, d_ino, d_type) == 0;
+#endif
+                } else {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+                    fContinue = vbsf_dir_emit_nls(ctx, pEntry->name.String.ach, cchSrcName, d_ino, d_type, sf_g);
+#else
+                    fContinue = vbsf_dir_emit_nls(opaque, filldir, offPos, pEntry->name.String.ach, cchSrcName,
+                                                  d_ino, d_type, sf_g);
+#endif
+                }
+                if (fContinue) {
+                    /* likely */
+                } else  {
+                    sf_d->cEntriesLeft = cEntriesLeft;
+                    sf_d->pEntry       = pEntry;
+                    sf_d->offPos       = offPos;
+                    up(&sf_d->Lock);
+                    return 0;
+                }
+            }
+
+            /*
+             * Advance to the next entry.
+             */
+            pEntry        = (PSHFLDIRINFO)((uintptr_t)pEntry + RT_UOFFSETOF(SHFLDIRINFO, name.String) + cbSrcName);
+            offPos       += 1;
+            dir->f_pos    = offPos;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+            ctx->pos      = offPos;
+#endif
+            cEntriesLeft -= 1;
+        } while (cEntriesLeft > 0);
+
+        /* Done with all available entries. */
+        sf_d->offPos       = offPos + cEntriesLeft;
+        sf_d->pEntry       = pBuf;
+        sf_d->cEntriesLeft = 0;
+    }
 }
 
+/**
+ * Directory file operations.
+ */
 struct file_operations vbsf_dir_fops = {
     .open = vbsf_dir_open,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+    .iterate_shared = vbsf_dir_iterate,
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
     .iterate = vbsf_dir_iterate,
 #else
     .readdir = vbsf_dir_read,
@@ -384,7 +563,7 @@ static struct inode *vbsf_create_inode(struct inode *parent, struct dentry *dent
      */
     struct vbsf_inode_info *sf_new_i = (struct vbsf_inode_info *)kmalloc(sizeof(*sf_new_i), GFP_KERNEL);
     if (sf_new_i) {
-        ino_t         iNodeNo = iunique(parent->i_sb, 1);
+        ino_t         iNodeNo = iunique(parent->i_sb, 16);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 25)
         struct inode *pInode  = iget_locked(parent->i_sb, iNodeNo);
 #else
@@ -398,8 +577,7 @@ static struct inode *vbsf_create_inode(struct inode *parent, struct dentry *dent
             sf_new_i->u32Magic      = SF_INODE_INFO_MAGIC;
 #endif
             sf_new_i->path          = path;
-            sf_new_i->force_reread  = 0;
-            sf_new_i->force_restat  = 0;
+            sf_new_i->force_restat  = false;
             sf_new_i->ts_up_to_date = jiffies;
             RTListInit(&sf_new_i->HandleList);
             sf_new_i->handle        = SHFL_HANDLE_NIL;
@@ -737,16 +915,11 @@ static int vbsf_unlink_worker(struct inode *parent, struct dentry *dentry, int f
 
             if (dentry->d_inode) {
                 struct vbsf_inode_info *sf_i = VBSF_GET_INODE_INFO(dentry->d_inode);
-                sf_i->force_restat = 1;
-                sf_i->force_reread = 1;
+                sf_i->force_restat = true;
             }
 
             if (RT_SUCCESS(rc)) {
-                /* directory access/change time changed */
-                sf_parent_i->force_restat = 1;
-                /* directory content changed */
-                sf_parent_i->force_reread = 1;
-
+                sf_parent_i->force_restat = true; /* directory access/change time changed */
                 err = 0;
             } else if (rc == VERR_FILE_NOT_FOUND || rc == VERR_PATH_NOT_FOUND) {
                 LogFunc(("(%d): VbglR0SfRemove(%s) failed rc=%Rrc; calling d_drop on %p\n",
