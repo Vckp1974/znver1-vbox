@@ -1,4 +1,4 @@
-/* $Id: UIMediumSelector.h 76979 2019-01-24 15:59:56Z vboxsync $ */
+/* $Id: UIMediumSelector.h 77009 2019-01-26 20:23:10Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIMediumSelector class declaration.
  */
@@ -69,8 +69,6 @@ private slots:
     void sltHandleMediumEnumerationFinish();
     void sltHandleRefresh();
     void sltHandlePerformSearch();
-    void sltHandleShowNextMatchingItem();
-    void sltHandleShowPreviousMatchingItem();
     void sltHandleTreeContextMenuRequest(const QPoint &point);
     void sltHandleTreeExpandAllSignal();
     void sltHandleTreeCollapseAllSignal();
@@ -103,7 +101,6 @@ private slots:
     /** Recursively create the hard disk hierarchy under the tree widget */
     UIMediumItem* createHardDiskItem(const UIMedium &medium, QITreeWidgetItem *pParent);
     UIMediumItem* searchItem(const QTreeWidgetItem *pParent, const QUuid &mediumId);
-    void          performMediumSearch();
     /** Remember the default foreground brush of the tree so that we can reset tree items' foreground later */
     void          saveDefaultForeground();
     void          selectMedium(const QUuid &uMediumID);

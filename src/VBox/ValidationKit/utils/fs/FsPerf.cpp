@@ -1,4 +1,4 @@
-/* $Id: FsPerf.cpp 76975 2019-01-24 12:36:32Z vboxsync $ */
+/* $Id: FsPerf.cpp 77007 2019-01-26 18:46:50Z vboxsync $ */
 /** @file
  * FsPerf - File System (Shared Folders) Performance Benchmark.
  */
@@ -256,21 +256,35 @@ enum
     kCmdOpt_NoRm,
     kCmdOpt_ChSize,
     kCmdOpt_NoChSize,
-    kCmdOpt_Read,
-    kCmdOpt_NoRead,
-    kCmdOpt_Write,
-    kCmdOpt_NoWrite,
+    kCmdOpt_ReadPerf,
+    kCmdOpt_NoReadPerf,
+    kCmdOpt_ReadTests,
+    kCmdOpt_NoReadTests,
+    kCmdOpt_WritePerf,
+    kCmdOpt_NoWritePerf,
+    kCmdOpt_WriteTests,
+    kCmdOpt_NoWriteTests,
     kCmdOpt_Seek,
     kCmdOpt_NoSeek,
     kCmdOpt_FSync,
     kCmdOpt_NoFSync,
     kCmdOpt_MMap,
     kCmdOpt_NoMMap,
+    kCmdOpt_IgnoreNoCache,
+    kCmdOpt_NoIgnoreNoCache,
+    kCmdOpt_IoFileSize,
+    kCmdOpt_SetBlockSize,
+    kCmdOpt_AddBlockSize,
 
     kCmdOpt_ShowDuration,
     kCmdOpt_NoShowDuration,
     kCmdOpt_ShowIterations,
     kCmdOpt_NoShowIterations,
+
+    kCmdOpt_ManyTreeFilesPerDir,
+    kCmdOpt_ManyTreeSubdirsPerDir,
+    kCmdOpt_ManyTreeDepth,
+
     kCmdOpt_End
 };
 
@@ -288,8 +302,11 @@ static const RTGETOPTDEF g_aCmdOptions[] =
     { "--enable-all",       'e', RTGETOPT_REQ_NOTHING },
     { "--disable-all",      'z', RTGETOPT_REQ_NOTHING },
 
-    { "--many-files",       kCmdOpt_ManyFiles,      RTGETOPT_REQ_NOTHING },
-    { "--no-many-files",    kCmdOpt_NoManyFiles,    RTGETOPT_REQ_NOTHING },
+    { "--many-files",       kCmdOpt_ManyFiles,              RTGETOPT_REQ_UINT32 },
+    { "--no-many-files",    kCmdOpt_NoManyFiles,            RTGETOPT_REQ_NOTHING },
+    { "--files-per-dir",    kCmdOpt_ManyTreeFilesPerDir,    RTGETOPT_REQ_UINT32 },
+    { "--subdirs-per-dir",  kCmdOpt_ManyTreeSubdirsPerDir,  RTGETOPT_REQ_UINT32 },
+    { "--tree-depth",       kCmdOpt_ManyTreeDepth,          RTGETOPT_REQ_UINT32 },
 
     { "--open",             kCmdOpt_Open,           RTGETOPT_REQ_NOTHING },
     { "--no-open",          kCmdOpt_NoOpen,         RTGETOPT_REQ_NOTHING },
@@ -317,16 +334,25 @@ static const RTGETOPTDEF g_aCmdOptions[] =
     { "--no-rm",            kCmdOpt_NoRm,           RTGETOPT_REQ_NOTHING },
     { "--chsize",           kCmdOpt_ChSize,         RTGETOPT_REQ_NOTHING },
     { "--no-chsize",        kCmdOpt_NoChSize,       RTGETOPT_REQ_NOTHING },
-    { "--read",             kCmdOpt_Read,           RTGETOPT_REQ_NOTHING },
-    { "--no-read",          kCmdOpt_NoRead,         RTGETOPT_REQ_NOTHING },
-    { "--write",            kCmdOpt_Write,          RTGETOPT_REQ_NOTHING },
-    { "--no-write",         kCmdOpt_NoWrite,        RTGETOPT_REQ_NOTHING },
+    { "--read-tests",       kCmdOpt_ReadTests,      RTGETOPT_REQ_NOTHING },
+    { "--no-read-tests",    kCmdOpt_NoReadTests,    RTGETOPT_REQ_NOTHING },
+    { "--read-perf",        kCmdOpt_ReadPerf,       RTGETOPT_REQ_NOTHING },
+    { "--no-read-perf",     kCmdOpt_NoReadPerf,     RTGETOPT_REQ_NOTHING },
+    { "--write-tests",      kCmdOpt_WriteTests,     RTGETOPT_REQ_NOTHING },
+    { "--no-write-tests",   kCmdOpt_NoWriteTests,   RTGETOPT_REQ_NOTHING },
+    { "--write-perf",       kCmdOpt_WritePerf,      RTGETOPT_REQ_NOTHING },
+    { "--no-write-perf",    kCmdOpt_NoWritePerf,    RTGETOPT_REQ_NOTHING },
     { "--seek",             kCmdOpt_Seek,           RTGETOPT_REQ_NOTHING },
     { "--no-seek",          kCmdOpt_NoSeek,         RTGETOPT_REQ_NOTHING },
     { "--fsync",            kCmdOpt_FSync,          RTGETOPT_REQ_NOTHING },
     { "--no-fsync",         kCmdOpt_NoFSync,        RTGETOPT_REQ_NOTHING },
     { "--mmap",             kCmdOpt_MMap,           RTGETOPT_REQ_NOTHING },
     { "--no-mmap",          kCmdOpt_NoMMap,         RTGETOPT_REQ_NOTHING },
+    { "--ignore-no-cache",  kCmdOpt_IgnoreNoCache,  RTGETOPT_REQ_NOTHING },
+    { "--no-ignore-no-cache",  kCmdOpt_NoIgnoreNoCache,  RTGETOPT_REQ_NOTHING },
+    { "--io-file-size",     kCmdOpt_IoFileSize,     RTGETOPT_REQ_UINT64 },
+    { "--set-block-size",   kCmdOpt_SetBlockSize,   RTGETOPT_REQ_UINT32 },
+    { "--add-block-size",   kCmdOpt_AddBlockSize,   RTGETOPT_REQ_UINT32 },
 
     { "--show-duration",        kCmdOpt_ShowDuration,       RTGETOPT_REQ_NOTHING },
     { "--no-show-duration",     kCmdOpt_NoShowDuration,     RTGETOPT_REQ_NOTHING },
@@ -369,8 +395,10 @@ static bool         g_fMkRmDir   = true;
 static bool         g_fStatVfs   = true;
 static bool         g_fRm        = true;
 static bool         g_fChSize    = true;
-static bool         g_fRead      = true;
-static bool         g_fWrite     = true;
+static bool         g_fReadTests = true;
+static bool         g_fReadPerf  = true;
+static bool         g_fWriteTests= true;
+static bool         g_fWritePerf = true;
 static bool         g_fSeek      = true;
 static bool         g_fFSync     = true;
 static bool         g_fMMap      = true;
@@ -386,7 +414,7 @@ static uint32_t     g_cManyFiles                = 10000;
 static uint32_t     g_cManyTreeFiles            = 640 + 16*640 /*10880*/;
 /** Number of files per directory in the 'manytree' construct. */
 static uint32_t     g_cManyTreeFilesPerDir      = 640;
-/* Number of subdirs per directory in the 'manytree' construct. */
+/** Number of subdirs per directory in the 'manytree' construct. */
 static uint32_t     g_cManyTreeSubdirsPerDir    = 16;
 /** The depth of the 'manytree' directory tree.  */
 static uint32_t     g_cManyTreeDepth            = 1;
@@ -399,6 +427,8 @@ static uint32_t     g_cIoBlocks                 = 8;
 static uint32_t     g_acbIoBlocks[16]           = { 1, 512, 4096, 16384, 65536, _1M, _32M, _128M };
 /** The desired size of the test file we use for I/O. */
 static uint64_t     g_cbIoFile                  = _512M;
+/** Whether to be less strict with non-cache file handle. */
+static bool         g_fIgnoreNoCache            = false;
 
 /** The length of g_szDir. */
 static size_t       g_cchDir;
@@ -1671,6 +1701,10 @@ void fsPerfIoSeek(RTFILE hFile1, uint64_t cbFile)
         if (ns > g_nsPerNanoTSCall + 32) \
             ns -= g_nsPerNanoTSCall; \
         uint64_t cIterations = g_nsTestRun / ns; \
+        if (cIterations < 2) \
+            cIterations = 2; \
+        else if (cIterations & 1) \
+            cIterations++; \
         \
         /* Do the actual profiling: */ \
         cSeeks = 0; \
@@ -1859,29 +1893,32 @@ void fsPerfRead(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
      */
     uint32_t cbPage = PAGE_SIZE;
     memset(pbBuf, 0x66, cbBuf);
-    RTTESTI_CHECK_RC(RTFileSeek(hFileNoCache, 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
-    for (size_t offBuf = 0; offBuf < cbBuf; )
+    if (!g_fIgnoreNoCache || hFileNoCache != NIL_RTFILE)
     {
-        uint32_t const cPagesLeft   = (uint32_t)((cbBuf - offBuf) / cbPage);
-        uint32_t const cPagesToRead = RTRandU32Ex(1, cPagesLeft);
-        size_t const   cbToRead     = cPagesToRead * (size_t)cbPage;
-        size_t cbActual = 0;
-        RTTESTI_CHECK_RC(RTFileRead(hFileNoCache, &pbBuf[offBuf], cbToRead, &cbActual), VINF_SUCCESS);
-        if (cbActual == cbToRead)
-            offBuf += cbActual;
-        else
+        RTTESTI_CHECK_RC(RTFileSeek(hFileNoCache, 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
+        for (size_t offBuf = 0; offBuf < cbBuf; )
         {
-            RTTestIFailed("Attempting to read %#zx bytes at %#zx, only got %#x bytes back!\n", cbToRead, offBuf, cbActual);
-            if (cbActual)
+            uint32_t const cPagesLeft   = (uint32_t)((cbBuf - offBuf) / cbPage);
+            uint32_t const cPagesToRead = RTRandU32Ex(1, cPagesLeft);
+            size_t const   cbToRead     = cPagesToRead * (size_t)cbPage;
+            size_t cbActual = 0;
+            RTTESTI_CHECK_RC(RTFileRead(hFileNoCache, &pbBuf[offBuf], cbToRead, &cbActual), VINF_SUCCESS);
+            if (cbActual == cbToRead)
                 offBuf += cbActual;
             else
             {
-                memset(&pbBuf[offBuf], 0x11, cbPage);
-                offBuf += cbPage;
+                RTTestIFailed("Attempting to read %#zx bytes at %#zx, only got %#x bytes back!\n", cbToRead, offBuf, cbActual);
+                if (cbActual)
+                    offBuf += cbActual;
+                else
+                {
+                    memset(&pbBuf[offBuf], 0x11, cbPage);
+                    offBuf += cbPage;
+                }
             }
         }
+        fsPerfCheckReadBuf(__LINE__, 0, pbBuf, cbBuf);
     }
-    fsPerfCheckReadBuf(__LINE__, 0, pbBuf, cbBuf);
 
     /*
      * Check reading zero bytes at the end of the file.
@@ -2037,6 +2074,9 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
     RTFILE ahFiles[2] = { hFileWriteThru, hFileNoCache };
     for (unsigned iFile = 0; iFile < RT_ELEMENTS(ahFiles); iFile++, bFiller++)
     {
+        if (g_fIgnoreNoCache && ahFiles[iFile] == NIL_RTFILE)
+            continue;
+
         fsPerfFillWriteBuf(0, pbBuf, cbBuf, bFiller);
         fsPerfCheckReadBuf(__LINE__, 0, pbBuf, cbBuf, bFiller);
         RTTESTI_CHECK_RC(RTFileSeek(ahFiles[iFile], 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
@@ -2110,7 +2150,6 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
     RTTESTI_CHECK(RTFileTell(hFile1) == cbFile / 2 + _4K);
 #endif
 
-    RT_NOREF(hFileNoCache, hFileWriteThru);
     RTMemPageFree(pbBuf, cbBuf);
 }
 
@@ -2196,6 +2235,7 @@ void fsPerfMMap(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
 
 # ifdef RT_OS_WINDOWS
         HANDLE hSection;
+        pbMapping = NULL;
         for (;; cbMapping /= 2)
         {
             hSection = CreateFileMapping((HANDLE)RTFileToNative(hFile1), NULL,
@@ -2218,8 +2258,9 @@ void fsPerfMMap(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
             }
             if (cbMapping <= _2M)
             {
-                RTTestIFailed("%u: CreateFileMapping or MapViewOfFile failed: %u, %u", enmState, dwErr1, dwErr2);
-                return;
+                RTTestIFailed("%u/%s: CreateFileMapping or MapViewOfFile failed: %u, %u",
+                              enmState, s_apszStates[enmState], dwErr1, dwErr2);
+                break;
             }
         }
 # else
@@ -2231,9 +2272,15 @@ void fsPerfMMap(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
                                         (int)RTFileToNative(hFile1), 0);
             if ((void *)pbMapping != MAP_FAILED)
                 break;
-            RTTESTI_CHECK_MSG_RETV(cbMapping > _2M, ("errno=%d", errno));
+            if (cbMapping <= _2M)
+            {
+                RTTestIFailed("%u/%s: mmap failed: %s (%u)", enmState, s_apszStates[enmState], strerror(errno), errno);
+                break;
+            }
         }
 # endif
+        if (cbMapping <= _2M)
+            continue;
 
         /*
          * Time page-ins just for fun.
@@ -2291,33 +2338,36 @@ void fsPerfMMap(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
                     /*
                      * Check that all the changes made it thru to the file:
                      */
-                    size_t   cbBuf = _2M;
-                    uint8_t *pbBuf = (uint8_t *)RTMemPageAlloc(_2M);
-                    if (!pbBuf)
+                    if (!g_fIgnoreNoCache || hFileNoCache != NIL_RTFILE)
                     {
-                        cbBuf = _4K;
-                        pbBuf = (uint8_t *)RTMemPageAlloc(_2M);
-                    }
-                    if (pbBuf)
-                    {
-                        RTTESTI_CHECK_RC(RTFileSeek(hFileNoCache, 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
-                        size_t const cbToCheck = RT_MIN(cFlushes * cbFlush, cbFlushed);
-                        unsigned     cErrors   = 0;
-                        for (size_t offBuf = 0; cErrors < 32 && offBuf < cbToCheck; offBuf += cbBuf)
+                        size_t   cbBuf = _2M;
+                        uint8_t *pbBuf = (uint8_t *)RTMemPageAlloc(_2M);
+                        if (!pbBuf)
                         {
-                            size_t cbToRead = RT_MIN(cbBuf, cbToCheck - offBuf);
-                            RTTESTI_CHECK_RC(RTFileRead(hFileNoCache, pbBuf, cbToRead, NULL), VINF_SUCCESS);
-
-                            for (size_t offFlush = 0; offFlush < cbToRead; offFlush += PAGE_SIZE)
-                                if (*(size_t volatile *)&pbBuf[offFlush + 8] != cbFlush)
-                                {
-                                    RTTestIFailed("Flush issue at offset #%zx: %#zx, expected %#zx (cbFlush=%#zx)",
-                                                  offBuf, *(size_t volatile *)&pbBuf[offFlush + 8], cbFlush, cbFlush);
-                                    if (++cErrors > 32)
-                                        break;
-                                }
+                            cbBuf = _4K;
+                            pbBuf = (uint8_t *)RTMemPageAlloc(_2M);
                         }
-                        RTMemPageFree(pbBuf, cbBuf);
+                        if (pbBuf)
+                        {
+                            RTTESTI_CHECK_RC(RTFileSeek(hFileNoCache, 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
+                            size_t const cbToCheck = RT_MIN(cFlushes * cbFlush, cbFlushed);
+                            unsigned     cErrors   = 0;
+                            for (size_t offBuf = 0; cErrors < 32 && offBuf < cbToCheck; offBuf += cbBuf)
+                            {
+                                size_t cbToRead = RT_MIN(cbBuf, cbToCheck - offBuf);
+                                RTTESTI_CHECK_RC(RTFileRead(hFileNoCache, pbBuf, cbToRead, NULL), VINF_SUCCESS);
+
+                                for (size_t offFlush = 0; offFlush < cbToRead; offFlush += PAGE_SIZE)
+                                    if (*(size_t volatile *)&pbBuf[offFlush + 8] != cbFlush)
+                                    {
+                                        RTTestIFailed("Flush issue at offset #%zx: %#zx, expected %#zx (cbFlush=%#zx)",
+                                                      offBuf, *(size_t volatile *)&pbBuf[offFlush + 8], cbFlush, cbFlush);
+                                        if (++cErrors > 32)
+                                            break;
+                                    }
+                            }
+                            RTMemPageFree(pbBuf, cbBuf);
+                        }
                     }
                 }
             }
@@ -2382,9 +2432,19 @@ void fsPerfIo(void)
     RTTESTI_CHECK_RC_RETV(RTFileOpen(&hFile1, InDir(RT_STR_TUPLE("file21")),
                                      RTFILE_O_CREATE_REPLACE | RTFILE_O_DENY_NONE | RTFILE_O_READWRITE), VINF_SUCCESS);
     RTFILE hFileNoCache;
-    RTTESTI_CHECK_RC_RETV(RTFileOpen(&hFileNoCache, g_szDir,
-                                     RTFILE_O_OPEN | RTFILE_O_DENY_NONE | RTFILE_O_READWRITE | RTFILE_O_NO_CACHE),
-                          VINF_SUCCESS);
+    if (!g_fIgnoreNoCache)
+        RTTESTI_CHECK_RC_RETV(RTFileOpen(&hFileNoCache, g_szDir,
+                                         RTFILE_O_OPEN | RTFILE_O_DENY_NONE | RTFILE_O_READWRITE | RTFILE_O_NO_CACHE),
+                              VINF_SUCCESS);
+    else
+    {
+        int rc = RTFileOpen(&hFileNoCache, g_szDir, RTFILE_O_OPEN | RTFILE_O_DENY_NONE | RTFILE_O_READWRITE | RTFILE_O_NO_CACHE);
+        if (RT_FAILURE(rc))
+        {
+            RTTestIPrintf(RTTESTLVL_ALWAYS, "Unable to open I/O file with non-cache flag (%Rrc), skipping related tests.\n", rc);
+            hFileNoCache = NIL_RTFILE;
+        }
+    }
     RTFILE hFileWriteThru;
     RTTESTI_CHECK_RC_RETV(RTFileOpen(&hFileWriteThru, g_szDir,
                                      RTFILE_O_OPEN | RTFILE_O_DENY_NONE | RTFILE_O_READWRITE | RTFILE_O_WRITE_THROUGH),
@@ -2400,33 +2460,39 @@ void fsPerfIo(void)
          */
         if (g_fSeek)
             fsPerfIoSeek(hFile1, cbFile);
-        if (g_fRead)
-        {
+
+        if (g_fReadTests)
             fsPerfRead(hFile1, hFileNoCache, cbFile);
+        if (g_fReadPerf)
             for (unsigned i = 0; i < g_cIoBlocks; i++)
                 fsPerfIoReadBlockSize(hFile1, cbFile, g_acbIoBlocks[i]);
-        }
+
         if (g_fMMap)
             fsPerfMMap(hFile1, hFileNoCache, cbFile);
-        if (g_fWrite)
-        {
-            /* This is destructive to the file content. */
+
+        /* This is destructive to the file content. */
+        if (g_fWriteTests)
             fsPerfWrite(hFile1, hFileNoCache, hFileWriteThru, cbFile);
+        if (g_fWritePerf)
             for (unsigned i = 0; i < g_cIoBlocks; i++)
                 fsPerfIoWriteBlockSize(hFile1, cbFile, g_acbIoBlocks[i]);
-        }
+
         if (g_fFSync)
             fsPerfFSync(hFile1, cbFile);
     }
 
     RTTESTI_CHECK_RC(RTFileSetSize(hFile1, 0), VINF_SUCCESS);
     RTTESTI_CHECK_RC(RTFileClose(hFile1), VINF_SUCCESS);
-    RTTESTI_CHECK_RC(RTFileClose(hFileNoCache), VINF_SUCCESS);
+    if (hFileNoCache != NIL_RTFILE || !g_fIgnoreNoCache)
+        RTTESTI_CHECK_RC(RTFileClose(hFileNoCache), VINF_SUCCESS);
     RTTESTI_CHECK_RC(RTFileClose(hFileWriteThru), VINF_SUCCESS);
     RTTESTI_CHECK_RC(RTFileDelete(g_szDir), VINF_SUCCESS);
 }
 
 
+/**
+ * Display the usage to @a pStrm.
+ */
 static void Usage(PRTSTREAM pStrm)
 {
     char szExec[RTPATH_MAX];
@@ -2441,19 +2507,29 @@ static void Usage(PRTSTREAM pStrm)
         const char *pszHelp;
         switch (g_aCmdOptions[i].iShort)
         {
-            case 'd':   pszHelp = "The directory to use for testing.  Default: CWD/fstestdir"; break;
-            case 'e':   pszHelp = "Enables all tests.   Default: -e"; break;
-            case 'z':   pszHelp = "Disables all tests.  Default: -e"; break;
-            case 's':   pszHelp = "Set benchmark duration in seconds.  Default: 10 sec"; break;
-            case 'm':   pszHelp = "Set benchmark duration in milliseconds.  Default: 10000 ms"; break;
-            case 'v':   pszHelp = "More verbose execution."; break;
-            case 'q':   pszHelp = "Quiet execution."; break;
-            case 'h':   pszHelp = "Displays this help and exit"; break;
-            case 'V':   pszHelp = "Displays the program revision"; break;
-            case kCmdOpt_ShowDuration:      pszHelp =  "Show duration of profile runs. default: --no-show-duration"; break;
-            case kCmdOpt_NoShowDuration:    pszHelp =  "Hide duration of profile runs. default: --no-show-duration"; break;
-            case kCmdOpt_ShowIterations:    pszHelp =  "Show iteration count for profile runs. default: --no-show-iterations"; break;
-            case kCmdOpt_NoShowIterations:  pszHelp =  "Hide iteration count for profile runs. default: --no-show-iterations"; break;
+            case 'd':                           pszHelp = "The directory to use for testing.            default: CWD/fstestdir"; break;
+            case 'e':                           pszHelp = "Enables all tests.                           default: -e"; break;
+            case 'z':                           pszHelp = "Disables all tests.                          default: -e"; break;
+            case 's':                           pszHelp = "Set benchmark duration in seconds.           default: 10 sec"; break;
+            case 'm':                           pszHelp = "Set benchmark duration in milliseconds.      default: 10000 ms"; break;
+            case 'v':                           pszHelp = "More verbose execution."; break;
+            case 'q':                           pszHelp = "Quiet execution."; break;
+            case 'h':                           pszHelp = "Displays this help and exit"; break;
+            case 'V':                           pszHelp = "Displays the program revision"; break;
+            case kCmdOpt_ShowDuration:          pszHelp = "Show duration of profile runs.               default: --no-show-duration"; break;
+            case kCmdOpt_NoShowDuration:        pszHelp = "Hide duration of profile runs.               default: --no-show-duration"; break;
+            case kCmdOpt_ShowIterations:        pszHelp = "Show iteration count for profile runs.       default: --no-show-iterations"; break;
+            case kCmdOpt_NoShowIterations:      pszHelp = "Hide iteration count for profile runs.       default: --no-show-iterations"; break;
+            case kCmdOpt_ManyFiles:             pszHelp = "Count of files in big test dir.              default: --many-files 10000"; break;
+            case kCmdOpt_NoManyFiles:           pszHelp = "Skip big test dir with many files.           default: --many-files 10000"; break;
+            case kCmdOpt_ManyTreeFilesPerDir:   pszHelp = "Count of files per directory in test tree.   default: 640"; break;
+            case kCmdOpt_ManyTreeSubdirsPerDir: pszHelp = "Count of subdirs per directory in test tree. default: 16"; break;
+            case kCmdOpt_ManyTreeDepth:         pszHelp = "Depth of test tree (not counting root).      default: 1"; break;
+            case kCmdOpt_IgnoreNoCache:         pszHelp = "Ignore error wrt no-cache handle.            default: --no-ignore-no-cache"; break;
+            case kCmdOpt_NoIgnoreNoCache:       pszHelp = "Do not ignore error wrt no-cache handle.     default: --no-ignore-no-cache"; break;
+            case kCmdOpt_IoFileSize:            pszHelp = "Size of file used for I/O tests.             default: 512 MB"; break;
+            case kCmdOpt_SetBlockSize:          pszHelp = "Sets single I/O block size (in bytes)."; break;
+            case kCmdOpt_AddBlockSize:          pszHelp = "Adds an I/O block size (in bytes)."; break;
             default:
                 if (g_aCmdOptions[i].iShort >= kCmdOpt_First)
                 {
@@ -2471,11 +2547,23 @@ static void Usage(PRTSTREAM pStrm)
         {
             char szOpt[64];
             RTStrPrintf(szOpt, sizeof(szOpt), "%s, -%c", g_aCmdOptions[i].pszLong, g_aCmdOptions[i].iShort);
-            RTStrmPrintf(pStrm, "  %-20s%s\n", szOpt, pszHelp);
+            RTStrmPrintf(pStrm, "  %-19s %s\n", szOpt, pszHelp);
         }
         else
-            RTStrmPrintf(pStrm, "  %-20s%s\n", g_aCmdOptions[i].pszLong, pszHelp);
+            RTStrmPrintf(pStrm, "  %-19s %s\n", g_aCmdOptions[i].pszLong, pszHelp);
     }
+}
+
+
+static uint32_t fsPerfCalcManyTreeFiles(void)
+{
+    uint32_t cDirs = 1;
+    for (uint32_t i = 0, cDirsAtLevel = 1; i < g_cManyTreeDepth; i++)
+    {
+        cDirs += cDirsAtLevel * g_cManyTreeSubdirsPerDir;
+        cDirsAtLevel *= g_cManyTreeSubdirsPerDir;
+    }
+    return g_cManyTreeFilesPerDir * cDirs;
 }
 
 
@@ -2553,8 +2641,10 @@ int main(int argc, char *argv[])
                 g_fStatVfs   = true;
                 g_fRm        = true;
                 g_fChSize    = true;
-                g_fRead      = true;
-                g_fWrite     = true;
+                g_fReadTests = true;
+                g_fReadPerf  = true;
+                g_fWriteTests= true;
+                g_fWritePerf = true;
                 g_fSeek      = true;
                 g_fFSync     = true;
                 g_fMMap      = true;
@@ -2575,8 +2665,10 @@ int main(int argc, char *argv[])
                 g_fStatVfs   = false;
                 g_fRm        = false;
                 g_fChSize    = false;
-                g_fRead      = false;
-                g_fWrite     = false;
+                g_fReadTests = false;
+                g_fReadPerf  = false;
+                g_fWriteTests= false;
+                g_fWritePerf = false;
                 g_fSeek      = false;
                 g_fFSync     = false;
                 g_fMMap      = false;
@@ -2585,7 +2677,6 @@ int main(int argc, char *argv[])
 #define CASE_OPT(a_Stem) \
             case RT_CONCAT(kCmdOpt_,a_Stem):   RT_CONCAT(g_f,a_Stem) = true; break; \
             case RT_CONCAT(kCmdOpt_No,a_Stem): RT_CONCAT(g_f,a_Stem) = false; break
-            CASE_OPT(ManyFiles);
             CASE_OPT(Open);
             CASE_OPT(FStat);
             CASE_OPT(FChMod);
@@ -2599,15 +2690,89 @@ int main(int argc, char *argv[])
             CASE_OPT(StatVfs);
             CASE_OPT(Rm);
             CASE_OPT(ChSize);
-            CASE_OPT(Read);
-            CASE_OPT(Write);
+            CASE_OPT(ReadTests);
+            CASE_OPT(ReadPerf);
+            CASE_OPT(WriteTests);
+            CASE_OPT(WritePerf);
             CASE_OPT(Seek);
             CASE_OPT(FSync);
             CASE_OPT(MMap);
+            CASE_OPT(IgnoreNoCache);
 
             CASE_OPT(ShowDuration);
             CASE_OPT(ShowIterations);
 #undef CASE_OPT
+
+            case kCmdOpt_ManyFiles:
+                g_fManyFiles = ValueUnion.u32 > 0;
+                g_cManyFiles = ValueUnion.u32;
+                break;
+
+            case kCmdOpt_NoManyFiles:
+                g_fManyFiles = false;
+                break;
+
+            case kCmdOpt_ManyTreeFilesPerDir:
+                if (ValueUnion.u32 > 0 && ValueUnion.u32 <= _64M)
+                {
+                    g_cManyTreeFilesPerDir = ValueUnion.u32;
+                    g_cManyTreeFiles = fsPerfCalcManyTreeFiles();
+                    break;
+                }
+                RTTestFailed(g_hTest, "Out of range --files-per-dir value: %u (%#x)\n", ValueUnion.u32, ValueUnion.u32);
+                return RTTestSummaryAndDestroy(g_hTest);
+
+            case kCmdOpt_ManyTreeSubdirsPerDir:
+                if (ValueUnion.u32 > 0 && ValueUnion.u32 <= 1024)
+                {
+                    g_cManyTreeSubdirsPerDir = ValueUnion.u32;
+                    g_cManyTreeFiles = fsPerfCalcManyTreeFiles();
+                    break;
+                }
+                RTTestFailed(g_hTest, "Out of range --subdirs-per-dir value: %u (%#x)\n", ValueUnion.u32, ValueUnion.u32);
+                return RTTestSummaryAndDestroy(g_hTest);
+
+            case kCmdOpt_ManyTreeDepth:
+                if (ValueUnion.u32 <= 8)
+                {
+                    g_cManyTreeDepth = ValueUnion.u32;
+                    g_cManyTreeFiles = fsPerfCalcManyTreeFiles();
+                    break;
+                }
+                RTTestFailed(g_hTest, "Out of range --tree-depth value: %u (%#x)\n", ValueUnion.u32, ValueUnion.u32);
+                return RTTestSummaryAndDestroy(g_hTest);
+
+            case kCmdOpt_IoFileSize:
+                if (ValueUnion.u64 == 0)
+                    g_cbIoFile = _512M;
+                else
+                    g_cbIoFile = ValueUnion.u64;
+                break;
+
+            case kCmdOpt_SetBlockSize:
+                if (ValueUnion.u32 > 0)
+                {
+                    g_cIoBlocks = 1;
+                    g_acbIoBlocks[0] = ValueUnion.u32;
+                }
+                else
+                {
+                    RTTestFailed(g_hTest, "Invalid I/O block size: %u (%#x)\n", ValueUnion.u32, ValueUnion.u32);
+                    return RTTestSummaryAndDestroy(g_hTest);
+                }
+                break;
+
+            case kCmdOpt_AddBlockSize:
+                if (g_cIoBlocks >= RT_ELEMENTS(g_acbIoBlocks))
+                    RTTestFailed(g_hTest, "Too many I/O block sizes: max %u\n", RT_ELEMENTS(g_acbIoBlocks));
+                else if (ValueUnion.u32 == 0)
+                    RTTestFailed(g_hTest, "Invalid I/O block size: %u (%#x)\n", ValueUnion.u32, ValueUnion.u32);
+                else
+                {
+                    g_acbIoBlocks[g_cIoBlocks++] = ValueUnion.u32;
+                    break;
+                }
+                return RTTestSummaryAndDestroy(g_hTest);
 
             case 'q':
                 g_uVerbosity = 0;
@@ -2623,7 +2788,7 @@ int main(int argc, char *argv[])
 
             case 'V':
             {
-                char szRev[] = "$Revision: 76975 $";
+                char szRev[] = "$Revision: 77007 $";
                 szRev[RT_ELEMENTS(szRev) - 2] = '\0';
                 RTPrintf(RTStrStrip(strchr(szRev, ':') + 1));
                 return RTEXITCODE_SUCCESS;
@@ -2682,7 +2847,7 @@ int main(int argc, char *argv[])
                     fsPerfRm(); /* deletes manyfiles and manytree */
                 if (g_fChSize)
                     fsPerfChSize();
-                if (g_fRead || g_fWrite || g_fSeek || g_fFSync || g_fMMap)
+                if (g_fReadPerf || g_fReadTests || g_fWritePerf || g_fWriteTests || g_fSeek || g_fFSync || g_fMMap)
                     fsPerfIo();
             }
 
