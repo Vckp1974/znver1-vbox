@@ -1,4 +1,4 @@
-/* $Id: GuestCtrlPrivate.cpp 76958 2019-01-23 18:23:04Z vboxsync $ */
+/* $Id: GuestCtrlPrivate.cpp 77083 2019-01-31 16:30:07Z vboxsync $ */
 /** @file
  * Internal helpers/structures for guest control functionality.
  */
@@ -418,7 +418,7 @@ const char *GuestProcessStreamBlock::GetString(const char *pszKey) const
 
     try
     {
-        GuestCtrlStreamPairMapIterConst itPairs = mPairs.find(Utf8Str(pszKey)); /** @todo r=bird: this string conversion is excellent performance wise... */
+        GuestCtrlStreamPairMapIterConst itPairs = mPairs.find(pszKey);
         if (itPairs != mPairs.end())
             return itPairs->second.mValue.c_str();
     }
@@ -938,66 +938,12 @@ int GuestBase::registerWaitEventEx(uint32_t uSessionID, uint32_t uObjectID, cons
     int rc = generateContextID(uSessionID, uObjectID, &idContext);
     AssertRCReturn(rc, rc);
 
-#if 1 /** @todo r=bird: Incorrect exception and memory handling, no strategy for dealing with duplicate IDs: */
-    rc = RTCritSectEnter(&mWaitEventCritSect);
-    if (RT_SUCCESS(rc))
-    {
-        try
-        {
-            GuestWaitEvent *pEvent = new GuestWaitEvent(idContext, lstEvents);
-            AssertPtr(pEvent);
+    GuestWaitEvent *pEvent = new GuestWaitEvent();
+    AssertPtrReturn(pEvent, VERR_NO_MEMORY);
 
-            LogFlowThisFunc(("New event=%p, CID=%RU32\n", pEvent, idContext));
+    rc = pEvent->Init(idContext, lstEvents);
+    AssertRCReturn(rc, rc);
 
-            /* Insert event into matching event group. This is for faster per-group
-             * lookup of all events later. */
-            for (GuestEventTypes::const_iterator itEvents = lstEvents.begin();
-                 itEvents != lstEvents.end(); ++itEvents)
-            {
-                /* Check if the event group already has an event with the same
-                 * context ID in it (collision). */
-                GuestWaitEvents eventGroup = mWaitEventGroups[(*itEvents)]; /** @todo r=bird: Why copy it? */
-                if (eventGroup.find(idContext) == eventGroup.end())
-                {
-                    /* No, insert. */
-                    mWaitEventGroups[(*itEvents)].insert(std::pair<uint32_t, GuestWaitEvent *>(idContext, pEvent));
-                }
-                else
-                {
-                    rc = VERR_ALREADY_EXISTS;
-                    break;
-                }
-            }
-
-            if (RT_SUCCESS(rc))
-            {
-                /* Register event in regular event list. */
-                if (mWaitEvents.find(idContext) == mWaitEvents.end())
-                {
-                    mWaitEvents[idContext] = pEvent;
-                }
-                else
-                    rc  = VERR_ALREADY_EXISTS;
-            }
-
-            if (RT_SUCCESS(rc))
-                *ppEvent = pEvent;
-        }
-        catch(std::bad_alloc &)
-        {
-            rc = VERR_NO_MEMORY;
-        }
-
-        int rc2 = RTCritSectLeave(&mWaitEventCritSect);
-        if (RT_SUCCESS(rc))
-            rc = rc2;
-    }
-    return rc;
-
-#else /** @todo r=bird: Version with proper exception handling, no leaks and limited duplicate CID handling:  */
-
-    GuestWaitEvent *pEvent = new GuestWaitEvent(idContext, lstEvents);
-    AssertReturn(pEvent, VERR_NO_MEMORY);
     LogFlowThisFunc(("New event=%p, CID=%RU32\n", pEvent, idContext));
 
     rc = RTCritSectEnter(&mWaitEventCritSect);
@@ -1054,7 +1000,7 @@ int GuestBase::registerWaitEventEx(uint32_t uSessionID, uint32_t uObjectID, cons
             if (RT_SUCCESS(rc))
             {
                 Assert(cInserts > 0);
-                NOREF(cInserts);
+                RT_NOREF(cInserts);
 
                 /*
                  * Register event in the regular event list.
@@ -1079,7 +1025,6 @@ int GuestBase::registerWaitEventEx(uint32_t uSessionID, uint32_t uObjectID, cons
 
     delete pEvent;
     return rc;
-#endif
 }
 
 int GuestBase::signalWaitEvent(VBoxEventType_T aType, IEvent *aEvent)
@@ -1333,10 +1278,8 @@ int GuestBase::unregisterWaitEvent(GuestWaitEvent *pWaitEvt)
  * @return  IPRT status code.
  * @param   pWaitEvt                Pointer to event to wait for.
  * @param   msTimeout               Timeout (in ms) for waiting.
- * @param   pType                   Event type of following IEvent.
- *                                  Optional.
- * @param   ppEvent                 Pointer to IEvent which got triggered
- *                                  for this event. Optional.
+ * @param   pType                   Event type of following IEvent. Optional.
+ * @param   ppEvent                 Pointer to IEvent which got triggered for this event. Optional.
  */
 int GuestBase::waitForEvent(GuestWaitEvent *pWaitEvt, uint32_t msTimeout, VBoxEventType_T *pType, IEvent **ppEvent)
 {
@@ -1348,7 +1291,7 @@ int GuestBase::waitForEvent(GuestWaitEvent *pWaitEvt, uint32_t msTimeout, VBoxEv
     if (RT_SUCCESS(vrc))
     {
         const ComPtr<IEvent> pThisEvent = pWaitEvt->Event();
-        if (pThisEvent.isNotNull()) /* Having a VBoxEventType_ event is optional. */ /** @todo r=bird: misplaced comment? */
+        if (pThisEvent.isNotNull()) /* Make sure that we actually have an event associated. */
         {
             if (pType)
             {
@@ -1527,19 +1470,8 @@ int GuestWaitEventBase::Wait(RTMSINTERVAL msTimeout)
     return rc;
 }
 
-GuestWaitEvent::GuestWaitEvent(uint32_t uCID,
-                               const GuestEventTypes &lstEvents)
+GuestWaitEvent::GuestWaitEvent(void)
 {
-    int rc2 = Init(uCID);
-    AssertRC(rc2); /** @todo Throw exception here. */ /** @todo r=bird: add+use Init() instead. Will cause weird VERR_CANCELLED errors in GuestBase::signalWaitEvent. */
-
-    mEventTypes = lstEvents;
-}
-
-GuestWaitEvent::GuestWaitEvent(uint32_t uCID)
-{
-    int rc2 = Init(uCID);
-    AssertRC(rc2); /** @todo Throw exception here. */ /** @todo r=bird: add+use Init() instead. Will cause weird VERR_CANCELLED errors in GuestBase::signalWaitEvent. */
 }
 
 GuestWaitEvent::~GuestWaitEvent(void)
@@ -1561,9 +1493,33 @@ int GuestWaitEvent::Cancel(void)
     return RTSemEventSignal(mEventSem);
 }
 
+/**
+ * Initializes a wait event with a given context ID (CID).
+ *
+ * @returns IPRT status code.
+ * @param   uCID                Context ID to initialize wait event with.
+ */
 int GuestWaitEvent::Init(uint32_t uCID)
 {
     return GuestWaitEventBase::Init(uCID);
+}
+
+/**
+ * Initializes a wait event with a given context ID (CID) and a list of event types to wait for.
+ *
+ * @returns IPRT status code.
+ * @param   uCID                Context ID to initialize wait event with.
+ * @param   lstEvents           List of event types to wait for this wait event to get signalled.
+ */
+int GuestWaitEvent::Init(uint32_t uCID, const GuestEventTypes &lstEvents)
+{
+    int rc = GuestWaitEventBase::Init(uCID);
+    if (RT_SUCCESS(rc))
+    {
+        mEventTypes = lstEvents;
+    }
+
+    return rc;
 }
 
 /**
@@ -1575,10 +1531,6 @@ int GuestWaitEvent::Init(uint32_t uCID)
  */
 int GuestWaitEvent::SignalExternal(IEvent *pEvent)
 {
-    /** @todo r=bird: VERR_CANCELLED is misleading. mEventSem can only be NIL if
-     *        not successfully initialized! */
-    AssertReturn(mEventSem != NIL_RTSEMEVENT, VERR_CANCELLED);
-
     if (pEvent)
         mEvent = pEvent;
 

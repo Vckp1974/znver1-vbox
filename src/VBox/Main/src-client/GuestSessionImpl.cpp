@@ -1,4 +1,4 @@
-/* $Id: GuestSessionImpl.cpp 76958 2019-01-23 18:23:04Z vboxsync $ */
+/* $Id: GuestSessionImpl.cpp 77073 2019-01-31 12:54:25Z vboxsync $ */
 /** @file
  * VirtualBox Main - Guest session handling.
  */
@@ -78,13 +78,13 @@ protected:
 };
 
 /**
- * Class for asynchronously opening a guest session.
+ * Class for asynchronously starting a guest session.
  */
-class GuestSessionTaskInternalOpen : public GuestSessionTaskInternal
+class GuestSessionTaskInternalStart : public GuestSessionTaskInternal
 {
 public:
 
-    GuestSessionTaskInternalOpen(GuestSession *pSession)
+    GuestSessionTaskInternalStart(GuestSession *pSession)
         : GuestSessionTaskInternal(pSession)
     {
         m_strTaskName = "gctlSesStart";
@@ -92,7 +92,7 @@ public:
 
     void handler()
     {
-        GuestSession::i_startSessionThreadTask(this);
+        /* Ignore rc */ GuestSession::i_startSessionThreadTask(this);
     }
 };
 
@@ -1050,7 +1050,7 @@ int GuestSession::i_directoryUnregister(GuestDirectory *pDirectory)
 
 int GuestSession::i_directoryRemove(const Utf8Str &strPath, uint32_t uFlags, int *prcGuest)
 {
-    AssertReturn(!(uFlags & ~DIRREMOVE_FLAG_VALID_MASK), VERR_INVALID_PARAMETER);
+    AssertReturn(!(uFlags & ~DIRREMOVEREC_FLAG_VALID_MASK), VERR_INVALID_PARAMETER);
     AssertPtrReturn(prcGuest, VERR_INVALID_POINTER);
 
     LogFlowThisFunc(("strPath=%s, uFlags=0x%x\n", strPath.c_str(), uFlags));
@@ -1575,6 +1575,16 @@ int GuestSession::i_fileOpen(const GuestFileOpenInfo &openInfo, ComObjPtr<GuestF
     return rc;
 }
 
+/**
+ * Queries information from a file on the guest.
+ *
+ * @returns IPRT status code. VERR_NOT_A_FILE if the queried file system object on the guest is not a file,
+ *                            or VERR_GSTCTL_GUEST_ERROR if prcGuest contains more error information from the guest.
+ * @param   strPath           Absolute path of file to query information for.
+ * @param   fFollowSymlinks   Whether or not to follow symbolic links on the guest.
+ * @param   objData           Where to store the acquired information.
+ * @param   prcGuest          Where to store the guest rc. Optional.
+ */
 int GuestSession::i_fileQueryInfo(const Utf8Str &strPath, bool fFollowSymlinks, GuestFsObjData &objData, int *prcGuest)
 {
     LogFlowThisFunc(("strPath=%s fFollowSymlinks=%RTbool\n", strPath.c_str(), fFollowSymlinks));
@@ -1703,10 +1713,6 @@ Utf8Str GuestSession::i_guestErrorToString(int rcGuest)
 
         case VERR_CANCELLED:
             strError += Utf8StrFmt(tr("The session operation was canceled"));
-            break;
-
-        case VERR_PERMISSION_DENIED: /** @todo r=bird: This is probably completely and utterly misleading. VERR_AUTHENTICATION_FAILURE could have this message. */
-            strError += Utf8StrFmt(tr("Invalid user/password credentials"));
             break;
 
         case VERR_GSTCTL_MAX_OBJECTS_REACHED:
@@ -1971,25 +1977,29 @@ int GuestSession::i_startSession(int *prcGuest)
     return vrc;
 }
 
+/**
+ * Starts the guest session asynchronously in a separate thread.
+ *
+ * @returns IPRT status code.
+ */
 int GuestSession::i_startSessionAsync(void)
 {
     LogFlowThisFuncEnter();
 
     int vrc;
-    GuestSessionTaskInternalOpen* pTask = NULL;
+    GuestSessionTaskInternalStart* pTask = NULL;
     try
     {
-        pTask = new GuestSessionTaskInternalOpen(this);
+        pTask = new GuestSessionTaskInternalStart(this);
         if (!pTask->isOk())
         {
             delete pTask;
-            LogFlow(("GuestSession: Could not create GuestSessionTaskInternalOpen object \n"));
+            LogFlow(("GuestSession: Could not create GuestSessionTaskInternalStart object\n"));
             throw VERR_MEMOBJ_INIT_FAILED;
         }
 
-        /* Asynchronously open the session on the guest by kicking off a
-         * worker thread. */
-        //this function delete pTask in case of exceptions, so there is no need in the call of delete operator
+        /* Asynchronously open the session on the guest by kicking off a worker thread. */
+        /* Note: This function deletes pTask in case of exceptions, so there is no need in the call of delete operator. */
         HRESULT hrc = pTask->createThread();
         vrc = Global::vboxStatusCodeFromCOM(hrc);
     }
@@ -2007,8 +2017,14 @@ int GuestSession::i_startSessionAsync(void)
     return vrc;
 }
 
+/**
+ * Static function to start a guest session asynchronously.
+ *
+ * @returns IPRT status code.
+ * @param   pTask               Task object to use for starting the guest session.
+ */
 /* static */
-void GuestSession::i_startSessionThreadTask(GuestSessionTaskInternalOpen *pTask)
+int GuestSession::i_startSessionThreadTask(GuestSessionTaskInternalStart *pTask)
 {
     LogFlowFunc(("pTask=%p\n", pTask));
     AssertPtr(pTask);
@@ -2018,19 +2034,13 @@ void GuestSession::i_startSessionThreadTask(GuestSessionTaskInternalOpen *pTask)
 
     AutoCaller autoCaller(pSession);
     if (FAILED(autoCaller.rc()))
-        return;
+        return VERR_COM_INVALID_OBJECT_STATE;
 
     int vrc = pSession->i_startSession(NULL /* Guest rc, ignored */);
-/** @todo
- *
- * r=bird: Is it okay to ignore @a vrc here?
- *
- */
-
     /* Nothing to do here anymore. */
 
     LogFlowFuncLeaveRC(vrc);
-    NOREF(vrc);
+    return vrc;
 }
 
 /**
@@ -2349,6 +2359,12 @@ int GuestSession::i_processCreateEx(GuestProcessStartupInfo &procInfo, ComObjPtr
        )
     {
         return VERR_INVALID_PARAMETER;
+    }
+
+    if (procInfo.mPriority)
+    {
+        if (!(procInfo.mPriority & ProcessPriority_Default))
+            return VERR_INVALID_PARAMETER;
     }
 
     /* Adjust timeout.
@@ -3351,8 +3367,26 @@ HRESULT GuestSession::directoryRemoveRecursive(const com::Utf8Str &aPath, const 
     if (RT_UNLIKELY((aPath.c_str()) == NULL || *(aPath.c_str()) == '\0'))
         return setError(E_INVALIDARG, tr("No directory to remove recursively specified"));
 
-/** @todo r=bird: Must check that the flags matches the hardcoded behavior
- *        further down!! */
+    uint32_t fFlags = DIRREMOVEREC_FLAG_NONE;
+    if (aFlags.size())
+    {
+        for (size_t i = 0; i < aFlags.size(); i++)
+        {
+            switch (aFlags[i])
+            {
+                case DirectoryRemoveRecFlag_ContentAndDir:
+                    fFlags = DIRREMOVEREC_FLAG_RECURSIVE | DIRREMOVEREC_FLAG_CONTENT_AND_DIR;
+                    break;
+
+                case DirectoryRemoveRecFlag_ContentOnly:
+                    fFlags = DIRREMOVEREC_FLAG_RECURSIVE | DIRREMOVEREC_FLAG_CONTENT_ONLY;
+                    break;
+
+                default:
+                    return setError(E_INVALIDARG, tr("Invalid flags specified"));
+            }
+        }
+    }
 
     HRESULT hrc = i_isReadyExternal();
     if (FAILED(hrc))
@@ -3377,11 +3411,8 @@ HRESULT GuestSession::directoryRemoveRecursive(const com::Utf8Str &aPath, const 
     if (FAILED(hrc))
         return hrc;
 
-    /* Remove the directory + all its contents. */
-    uint32_t uFlags = DIRREMOVE_FLAG_RECURSIVE
-                    | DIRREMOVE_FLAG_CONTENT_AND_DIR;
     int rcGuest;
-    int vrc = i_directoryRemove(aPath, uFlags, &rcGuest);
+    int vrc = i_directoryRemove(aPath, fFlags, &rcGuest);
     if (RT_FAILURE(vrc))
     {
         switch (vrc)
@@ -3550,11 +3581,11 @@ HRESULT GuestSession::fileExists(const com::Utf8Str &aPath, BOOL aFollowSymlinks
     AutoCaller autoCaller(this);
     if (FAILED(autoCaller.rc())) return autoCaller.rc();
 
+    /* By default we return non-existent. */
+    *aExists = FALSE;
+
     if (RT_UNLIKELY((aPath.c_str()) == NULL || *(aPath.c_str()) == '\0'))
-    {
-        *aExists = FALSE;
         return S_OK;
-    }
 
     HRESULT hrc = i_isReadyExternal();
     if (FAILED(hrc))
@@ -3563,7 +3594,7 @@ HRESULT GuestSession::fileExists(const com::Utf8Str &aPath, BOOL aFollowSymlinks
     LogFlowThisFuncEnter();
 
     GuestFsObjData objData; int rcGuest;
-    int vrc = i_fileQueryInfo(aPath, aFollowSymlinks != FALSE, objData, &rcGuest);
+    int vrc = i_fileQueryInfo(aPath, RT_BOOL(aFollowSymlinks), objData, &rcGuest);
     if (RT_SUCCESS(vrc))
     {
         *aExists = TRUE;
@@ -3573,13 +3604,23 @@ HRESULT GuestSession::fileExists(const com::Utf8Str &aPath, BOOL aFollowSymlinks
     switch (vrc)
     {
         case VERR_GSTCTL_GUEST_ERROR:
-            hrc = GuestProcess::i_setErrorExternal(this, rcGuest);
-            break;
+        {
+            switch (rcGuest)
+            {
+                case VERR_PATH_NOT_FOUND:
+                    RT_FALL_THROUGH();
+                case VERR_FILE_NOT_FOUND:
+                    break;
 
-/** @todo r=bird: what about VERR_PATH_NOT_FOUND and VERR_FILE_NOT_FOUND?
- *        Where does that get converted to *aExists = FALSE? */
+                default:
+                    hrc = GuestProcess::i_setErrorExternal(this, rcGuest);
+                    break;
+            }
+
+            break;
+        }
+
         case VERR_NOT_A_FILE:
-            *aExists = FALSE;
             break;
 
         default:
@@ -3979,11 +4020,6 @@ HRESULT GuestSession::processCreateEx(const com::Utf8Str &aExecutable, const std
     if (FAILED(hr))
         return hr;
 
-    /** @todo r=bird: Check input better? aPriority is passed on to the guest
-     * without any validation.  Flags not existing in this vbox version are
-     * ignored, potentially doing something entirely different than what the
-     * caller had in mind. */
-
     /*
      * Must have an executable to execute.  If none is given, we try use the
      * zero'th argument.
@@ -3996,6 +4032,8 @@ HRESULT GuestSession::processCreateEx(const com::Utf8Str &aExecutable, const std
         if (pszExecutable == NULL || *pszExecutable == '\0')
             return setError(E_INVALIDARG, tr("No command to execute specified"));
     }
+
+    /* The rest of the input is being validated in i_processCreateEx(). */
 
     LogFlowThisFuncEnter();
 
