@@ -1,4 +1,4 @@
-# $Id: Makefile.kmk 77432 2019-02-22 14:52:39Z vboxsync $
+# $Id: Makefile.kmk 77457 2019-02-25 14:20:51Z vboxsync $
 ## @file
 # Makefile for the VirtualBox Qt GUI.
 #
@@ -1269,6 +1269,7 @@ VBoxGlobal_SOURCES = \
 	src/globals/UICustomFileSystemModel.cpp \
 	src/globals/UIDefs.cpp \
 	src/globals/UIDesktopWidgetWatchdog.cpp \
+	src/globals/UIDetailsGenerator.cpp \
 	src/globals/UIDialogPanel.cpp \
 	src/globals/UIErrorString.cpp \
 	src/globals/UIIconPool.cpp \

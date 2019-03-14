@@ -1,4 +1,4 @@
-/* $Id: UIChooserItemGroup.cpp 77434 2019-02-22 15:06:41Z vboxsync $ */
+/* $Id: UIChooserItemGroup.cpp 77462 2019-02-25 16:37:15Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserItemGroup class implementation.
  */
@@ -28,8 +28,8 @@
 #include <QWindow>
 
 /* GUI includes: */
-#include "UIChooserItemGroup.h"
 #include "UIChooserItemGlobal.h"
+#include "UIChooserItemGroup.h"
 #include "UIChooserItemMachine.h"
 #include "UIChooserModel.h"
 #include "UIChooserView.h"
@@ -44,7 +44,7 @@
 *********************************************************************************************************************************/
 
 UIChooserItemGroup::UIChooserItemGroup(QGraphicsScene *pScene)
-    : UIChooserItem(0, false /* favorite? */, false /* temporary? */)
+    : UIChooserItem(0, false /* favorite? */)
     , m_fClosed(false)
     , m_iAdditionalHeight(0)
     , m_iHeaderDarkness(110)
@@ -80,7 +80,7 @@ UIChooserItemGroup::UIChooserItemGroup(UIChooserItem *pParent,
                                        const QString &strName,
                                        bool fOpened /* = false */,
                                        int iPosition /* = -1 */)
-    : UIChooserItem(pParent, pParent->isFavorite(), pParent->isTemporary())
+    : UIChooserItem(pParent, pParent->isFavorite())
     , m_fClosed(!fOpened)
     , m_iAdditionalHeight(0)
     , m_iHeaderDarkness(110)
@@ -127,13 +127,13 @@ UIChooserItemGroup::UIChooserItemGroup(UIChooserItem *pParent,
 }
 
 UIChooserItemGroup::UIChooserItemGroup(UIChooserItem *pParent,
-                                       UIChooserItemGroup *pCopyFrom,
+                                       UIChooserItemGroup *pCopiedItem,
                                        int iPosition /* = -1 */)
-    : UIChooserItem(pParent, pParent->isFavorite(), pParent->isTemporary())
-    , m_fClosed(pCopyFrom->isClosed())
+    : UIChooserItem(pParent, pParent->isFavorite())
+    , m_fClosed(pCopiedItem->isClosed())
     , m_iAdditionalHeight(0)
     , m_iHeaderDarkness(110)
-    , m_strName(pCopyFrom->name())
+    , m_strName(pCopiedItem->name())
     , m_pToggleButton(0)
     , m_pEnterButton(0)
     , m_pExitButton(0)
@@ -161,7 +161,7 @@ UIChooserItemGroup::UIChooserItemGroup(UIChooserItem *pParent,
             this, &UIChooserItemGroup::sltHandleWindowRemapped);
 
     /* Copy content to 'this': */
-    copyContent(pCopyFrom, this);
+    copyContent(pCopiedItem, this);
 
     /* Apply language settings: */
     retranslateUi();
@@ -509,21 +509,6 @@ void UIChooserItemGroup::addItem(UIChooserItem *pItem, bool fFavorite, int iPosi
     /* Check item type: */
     switch (pItem->type())
     {
-        case UIChooserItemType_Group:
-        {
-            AssertMsg(!m_groupItems.contains(pItem), ("Group-item already added!"));
-            if (iPosition < 0 || iPosition >= m_groupItems.size())
-            {
-                m_pLayoutGroup->addItem(pItem);
-                m_groupItems.append(pItem);
-            }
-            else
-            {
-                m_pLayoutGroup->insertItem(iPosition, pItem);
-                m_groupItems.insert(iPosition, pItem);
-            }
-            break;
-        }
         case UIChooserItemType_Global:
         {
             AssertMsg(!m_globalItems.contains(pItem), ("Global-item already added!"));
@@ -542,6 +527,21 @@ void UIChooserItemGroup::addItem(UIChooserItem *pItem, bool fFavorite, int iPosi
                 else
                     m_pLayoutGlobal->insertItem(iPosition, pItem);
                 m_globalItems.insert(iPosition, pItem);
+            }
+            break;
+        }
+        case UIChooserItemType_Group:
+        {
+            AssertMsg(!m_groupItems.contains(pItem), ("Group-item already added!"));
+            if (iPosition < 0 || iPosition >= m_groupItems.size())
+            {
+                m_pLayoutGroup->addItem(pItem);
+                m_groupItems.append(pItem);
+            }
+            else
+            {
+                m_pLayoutGroup->insertItem(iPosition, pItem);
+                m_groupItems.insert(iPosition, pItem);
             }
             break;
         }
@@ -579,16 +579,16 @@ void UIChooserItemGroup::removeItem(UIChooserItem *pItem)
     /* Check item type: */
     switch (pItem->type())
     {
-        case UIChooserItemType_Group:
-        {
-            AssertMsg(m_groupItems.contains(pItem), ("Group-item was not found!"));
-            m_groupItems.removeAt(m_groupItems.indexOf(pItem));
-            break;
-        }
         case UIChooserItemType_Global:
         {
             AssertMsg(m_globalItems.contains(pItem), ("Global-item was not found!"));
             m_globalItems.removeAt(m_globalItems.indexOf(pItem));
+            break;
+        }
+        case UIChooserItemType_Group:
+        {
+            AssertMsg(m_groupItems.contains(pItem), ("Group-item was not found!"));
+            m_groupItems.removeAt(m_groupItems.indexOf(pItem));
             break;
         }
         case UIChooserItemType_Machine:
@@ -616,8 +616,8 @@ void UIChooserItemGroup::setItems(const QList<UIChooserItem*> &items, UIChooserI
     /* Check item type: */
     switch (type)
     {
-        case UIChooserItemType_Group: m_groupItems = items; break;
         case UIChooserItemType_Global: m_globalItems = items; break;
+        case UIChooserItemType_Group: m_groupItems = items; break;
         case UIChooserItemType_Machine: m_machineItems = items; break;
         default: AssertMsgFailed(("Invalid item type!")); break;
     }
@@ -634,8 +634,8 @@ QList<UIChooserItem*> UIChooserItemGroup::items(UIChooserItemType type /* = UICh
     switch (type)
     {
         case UIChooserItemType_Any: return items(UIChooserItemType_Global) + items(UIChooserItemType_Group) + items(UIChooserItemType_Machine);
-        case UIChooserItemType_Group: return m_groupItems;
         case UIChooserItemType_Global: return m_globalItems;
+        case UIChooserItemType_Group: return m_groupItems;
         case UIChooserItemType_Machine: return m_machineItems;
         default: break;
     }
@@ -648,10 +648,10 @@ bool UIChooserItemGroup::hasItems(UIChooserItemType type /* = UIChooserItemType_
     {
         case UIChooserItemType_Any:
             return hasItems(UIChooserItemType_Global) || hasItems(UIChooserItemType_Group) || hasItems(UIChooserItemType_Machine);
-        case UIChooserItemType_Group:
-            return !m_groupItems.isEmpty();
         case UIChooserItemType_Global:
             return !m_globalItems.isEmpty();
+        case UIChooserItemType_Group:
+            return !m_groupItems.isEmpty();
         case UIChooserItemType_Machine:
             return !m_machineItems.isEmpty();
     }
@@ -664,21 +664,21 @@ void UIChooserItemGroup::clearItems(UIChooserItemType type /* = UIChooserItemTyp
     {
         case UIChooserItemType_Any:
         {
-            clearItems(UIChooserItemType_Group);
             clearItems(UIChooserItemType_Global);
+            clearItems(UIChooserItemType_Group);
             clearItems(UIChooserItemType_Machine);
-            break;
-        }
-        case UIChooserItemType_Group:
-        {
-            while (!m_groupItems.isEmpty()) { delete m_groupItems.last(); }
-            AssertMsg(m_groupItems.isEmpty(), ("Group items cleanup failed!"));
             break;
         }
         case UIChooserItemType_Global:
         {
             while (!m_globalItems.isEmpty()) { delete m_globalItems.last(); }
             AssertMsg(m_globalItems.isEmpty(), ("Global items cleanup failed!"));
+            break;
+        }
+        case UIChooserItemType_Group:
+        {
+            while (!m_groupItems.isEmpty()) { delete m_groupItems.last(); }
+            AssertMsg(m_groupItems.isEmpty(), ("Group items cleanup failed!"));
             break;
         }
         case UIChooserItemType_Machine:
@@ -1177,8 +1177,7 @@ void UIChooserItemGroup::sltGroupToggleStart()
         return;
 
     /* Toggle started: */
-    if (!isTemporary())
-        emit sigToggleStarted();
+    emit sigToggleStarted();
 
     /* Setup animation: */
     updateAnimationParameters();
@@ -1221,8 +1220,7 @@ void UIChooserItemGroup::sltGroupToggleFinish(bool fToggled)
     updateToggleButtonToolTip();
 
     /* Toggle finished: */
-    if (!isTemporary())
-        emit sigToggleFinished();
+    emit sigToggleFinished();
 }
 
 void UIChooserItemGroup::sltIndentRoot()

@@ -1,4 +1,4 @@
-/* $Id: UIChooserItemGroup.h 77434 2019-02-22 15:06:41Z vboxsync $ */
+/* $Id: UIChooserItemGroup.h 77462 2019-02-25 16:37:15Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserItemGroup class declaration.
  */
@@ -64,12 +64,12 @@ public:
     /** RTTI item type. */
     enum { Type = UIChooserItemType_Group };
 
-    /** Constructs main-root item, passing pScene to the base-class. */
+    /** Constructs root item, passing pScene to the base-class. */
     UIChooserItemGroup(QGraphicsScene *pScene);
     /** Constructs non-root item with specified @a strName and @a iPosition, @a fOpened if requested, passing pParent to the base-class. */
     UIChooserItemGroup(UIChooserItem *pParent, const QString &strName, bool fOpened = false, int iPosition  = -1);
-    /** Constructs temporary non-root item with specified @a iPosition as a @a pCopyFrom, passing pParent to the base-class. */
-    UIChooserItemGroup(UIChooserItem *pParent, UIChooserItemGroup *pCopyFrom, int iPosition = -1);
+    /** Constructs a copy of non-root @a pCopiedItem with specified @a iPosition, passing pParent to the base-class. */
+    UIChooserItemGroup(UIChooserItem *pParent, UIChooserItemGroup *pCopiedItem, int iPosition = -1);
     /** Destructs group item. */
     virtual ~UIChooserItemGroup() /* override */;
 
@@ -375,10 +375,10 @@ private:
         /** Holds the machine layout instance. */
         QGraphicsLinearLayout *m_pLayoutMachine;
 
-        /** Holds the group children list. */
-        QList<UIChooserItem*>  m_groupItems;
         /** Holds the global children list. */
         QList<UIChooserItem*>  m_globalItems;
+        /** Holds the group children list. */
+        QList<UIChooserItem*>  m_groupItems;
         /** Holds the machine children list. */
         QList<UIChooserItem*>  m_machineItems;
 
