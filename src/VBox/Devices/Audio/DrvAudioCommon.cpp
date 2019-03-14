@@ -1,4 +1,4 @@
-/* $Id: DrvAudioCommon.cpp 76679 2019-01-07 13:50:26Z vboxsync $ */
+/* $Id: DrvAudioCommon.cpp 76860 2019-01-17 13:54:19Z vboxsync $ */
 /** @file
  * Intermedia audio driver, common routines.
  *
@@ -927,16 +927,32 @@ void DrvAudioHlpPCMPropsPrint(const PPDMAUDIOPCMPROPS pProps)
  * Converts PCM properties to a audio stream configuration.
  *
  * @return  IPRT status code.
- * @param   pProps              Pointer to PCM properties to convert.
- * @param   pCfg                Pointer to audio stream configuration to store result into.
+ * @param   pProps              PCM properties to convert.
+ * @param   pCfg                Stream configuration to store result into.
  */
 int DrvAudioHlpPCMPropsToStreamCfg(const PPDMAUDIOPCMPROPS pProps, PPDMAUDIOSTREAMCFG pCfg)
 {
     AssertPtrReturn(pProps, VERR_INVALID_POINTER);
     AssertPtrReturn(pCfg,   VERR_INVALID_POINTER);
 
+    DrvAudioHlpStreamCfgInit(pCfg);
+
     memcpy(&pCfg->Props, pProps, sizeof(PDMAUDIOPCMPROPS));
     return VINF_SUCCESS;
+}
+
+/**
+ * Initializes a stream configuration with its default values.
+ *
+ * @param   pCfg                Stream configuration to initialize.
+ */
+void DrvAudioHlpStreamCfgInit(PPDMAUDIOSTREAMCFG pCfg)
+{
+    AssertPtrReturnVoid(pCfg);
+
+    RT_BZERO(pCfg, sizeof(PDMAUDIOSTREAMCFG));
+
+    pCfg->Backend.cfPreBuf = UINT32_MAX; /* Explicitly set to "undefined". */
 }
 
 /**
