@@ -30,28 +30,27 @@
 #include <QModelIndex>
 
 /* GUI includes: */
-#include "QIMainDialog.h"
+#include "QIDialog.h"
 #include "QIWithRetranslateUI.h"
 #include "UIVisoCreatorDefs.h"
 
 /* Forward declarations: */
 class QItemSelection;
-class QMenu;
-class QSplitter;
 class QVBoxLayout;
+class QSplitter;
 class QIDialogButtonBox;
 class UIActionPool;
 class UIToolBar;
 class UIVisoHostBrowser;
 class UIVisoContentBrowser;
 
-class SHARED_LIBRARY_STUFF UIVisoCreator : public QIWithRetranslateUI<QIMainDialog>
+class SHARED_LIBRARY_STUFF UIVisoCreator : public QIWithRetranslateUI<QIDialog>
 {
     Q_OBJECT;
 
 public:
 
-    UIVisoCreator(QWidget *pParent = 0, const QString& strMachineName = QString());
+    UIVisoCreator(QWidget *pParent = 0);
     ~UIVisoCreator();
     QStringList entryList() const;
     const QString &visoName() const;
@@ -93,11 +92,7 @@ private slots:
     QAction              *m_pActionOptions;
     VisoOptions           m_visoOptions;
     BrowserOptions        m_browserOptions;
-    QWidget              *m_pCentralWidget;
-    QMenu                *m_pMainMenu;
-    QMenu                *m_pHostBrowserMenu;
-    QMenu                *m_pVisoContentBrowserMenu;
-    QString               m_strMachineName;
+
 };
 
 #endif /* !FEQT_INCLUDED_SRC_medium_viso_UIVisoCreator_h */

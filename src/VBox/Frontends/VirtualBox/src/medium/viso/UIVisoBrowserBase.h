@@ -25,28 +25,23 @@
 #include <QModelIndex>
 #include <QWidget>
 
-/* GUI includes: */
-#include "QIWithRetranslateUI.h"
-
 /* Forward declarations: */
 class QItemSelection;
 class QGridLayout;
 class QLabel;
-class QMenu;
 class QSplitter;
 class QVBoxLayout;
 class QTableView;
 class QTreeView;
 class UIToolBar;
 
-class UIVisoBrowserBase : public QIWithRetranslateUI<QWidget>
+class UIVisoBrowserBase : public QWidget
 {
     Q_OBJECT;
 
 public:
-    /** @p pMenu is the pointer to the menu related to this browser widget.
-     *  any member actions will be added to this menu. */
-    UIVisoBrowserBase(QWidget *pParent = 0, QMenu *pMenu = 0);
+
+    UIVisoBrowserBase(QWidget *pParent = 0);
     ~UIVisoBrowserBase();
     virtual void showHideHiddenObjects(bool bShow) = 0;
 
@@ -70,7 +65,7 @@ protected:
     QWidget            *m_pRightContainerWidget;
     QGridLayout        *m_pRightContainerLayout;
     UIToolBar          *m_pVerticalToolBar;
-    QMenu              *m_pMenu;
+
 private:
     QGridLayout    *m_pMainLayout;
     QSplitter      *m_pHorizontalSplitter;

@@ -23,7 +23,6 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QListView>
-#include <QMenu>
 #include <QMimeData>
 #include <QTableView>
 #include <QTreeView>
@@ -115,8 +114,8 @@ QMimeData *UIVisoHostBrowserModel::mimeData(const QModelIndexList &indexes) cons
 *   UIVisoHostBrowser implementation.                                                                                   *
 *********************************************************************************************************************************/
 
-UIVisoHostBrowser::UIVisoHostBrowser(QWidget *pParent /* = 0 */, QMenu *pMenu /* = 0 */)
-    : UIVisoBrowserBase(pParent, pMenu)
+UIVisoHostBrowser::UIVisoHostBrowser(QWidget *pParent)
+    : QIWithRetranslateUI<UIVisoBrowserBase>(pParent)
     , m_pTreeModel(0)
     , m_pTableModel(0)
     , m_pAddAction(0)
@@ -135,10 +134,7 @@ void UIVisoHostBrowser::retranslateUi()
     if (m_pTitleLabel)
         m_pTitleLabel->setText(QApplication::translate("UIVisoCreator", "Host file system"));
     if (m_pAddAction)
-    {
         m_pAddAction->setToolTip(QApplication::translate("UIVisoCreator", "Add selected file objects to ISO"));
-        m_pAddAction->setText(QApplication::translate("UIVisoCreator", "Add"));
-    }
 }
 
 void UIVisoHostBrowser::prepareObjects()
@@ -205,10 +201,8 @@ void UIVisoHostBrowser::prepareObjects()
                                                       ":/file_manager_copy_to_guest_16px.png",
                                                       ":/file_manager_copy_to_guest_disabled_24px.png",
                                                       ":/file_manager_copy_to_guest_disabled_16px.png"));
-        m_pAddAction->setText(QApplication::translate("UIVisoCreator", "Add"));
+
         m_pAddAction->setEnabled(false);
-        if (m_pMenu)
-            m_pMenu->addAction(m_pAddAction);
     }
 
     retranslateUi();
