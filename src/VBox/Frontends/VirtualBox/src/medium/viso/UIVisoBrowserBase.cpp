@@ -1,4 +1,4 @@
-/* $Id: UIVisoBrowserBase.cpp 76826 2019-01-15 18:19:10Z vboxsync $ */
+/* $Id: UIVisoBrowserBase.cpp 77322 2019-02-14 20:11:08Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoBrowserBase class implementation.
  */
@@ -19,25 +19,144 @@
 #include <QHeaderView>
 #include <QGridLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QSplitter>
 #include <QTableView>
 #include <QTreeView>
 #include <QVBoxLayout>
 
 /* GUI includes: */
-#include "UIVisoBrowserBase.h"
+#include "QIToolButton.h"
+#include "UIIconPool.h"
 #include "UIToolBar.h"
+#include "UIVisoBrowserBase.h"
+
+
+/*********************************************************************************************************************************
+*   UILocationSelector definition.                                                                                   *
+*********************************************************************************************************************************/
+/** A QWidget extension used to show/hide parents treeview (thru signals) and show the path of
+ * the current selected file item. */
+class UILocationSelector : public QIWithRetranslateUI<QWidget>
+{
+    Q_OBJECT;
+public:
+
+    UILocationSelector(QWidget *pParent = 0);
+    int  lineEditWidth() const;
+    void updateLineEditText(const QString &strText);
+
+signals:
+
+    void sigExpandCollapseTreeView();
+
+protected:
+
+    virtual void retranslateUi() /* override */;
+    virtual void paintEvent(QPaintEvent *pEvent) /* override */;
+    virtual bool eventFilter(QObject *pObj, QEvent *pEvent) /* override */;
+
+private:
+
+    void prepareWidgets();
+    QLineEdit   *m_pLineEdit;
+    QGridLayout *m_pMainLayout;
+    QIToolButton *m_pExpandButton;
+};
+
+/*********************************************************************************************************************************
+*   UILocationSelector implementation.                                                                                   *
+*********************************************************************************************************************************/
+
+UILocationSelector::UILocationSelector(QWidget *pParent /* = 0 */)
+    :QIWithRetranslateUI<QWidget>(pParent)
+    , m_pLineEdit(0)
+    , m_pMainLayout(0)
+    , m_pExpandButton(0)
+{
+    prepareWidgets();
+}
+
+int UILocationSelector::lineEditWidth() const
+{
+    if (!m_pLineEdit)
+        return 0;
+    return m_pLineEdit->width();
+}
+
+void UILocationSelector::updateLineEditText(const QString &strText)
+{
+    if (!m_pLineEdit)
+        return;
+    m_pLineEdit->setText(strText);
+}
+
+void UILocationSelector::paintEvent(QPaintEvent *pEvent)
+{
+    QIWithRetranslateUI<QWidget>::paintEvent(pEvent);
+}
+
+void UILocationSelector::retranslateUi()
+{
+    if (m_pExpandButton)
+        m_pExpandButton->setToolTip(QApplication::translate("UIVisoCreator", "Click to show/hide the tree view"));
+}
+
+bool UILocationSelector::eventFilter(QObject *pObj, QEvent *pEvent)
+{
+    if (pObj == m_pLineEdit)
+    {
+        if(pEvent->type() == QEvent::MouseButtonPress)
+        {
+            QMouseEvent *pMouseEvent = dynamic_cast<QMouseEvent*>(pEvent);
+            if (pMouseEvent && pMouseEvent->button() == Qt::LeftButton)
+                emit sigExpandCollapseTreeView();
+        }
+    }
+    /* Pass the events to event system for further processing: */
+    return false;
+}
+
+void UILocationSelector::prepareWidgets()
+{
+    m_pMainLayout = new QGridLayout;
+    if (!m_pMainLayout)
+        return;
+    m_pMainLayout->setSpacing(0);
+    m_pMainLayout->setContentsMargins(0,0,0,0);
+
+    m_pLineEdit = new QLineEdit;
+    if (m_pLineEdit)
+    {
+        m_pMainLayout->addWidget(m_pLineEdit, 0, 0, 1, 4);
+        m_pLineEdit->setReadOnly(true);
+        m_pLineEdit->installEventFilter(this);
+    }
+
+    m_pExpandButton = new QIToolButton;
+    if (m_pExpandButton)
+    {
+        m_pMainLayout->addWidget(m_pExpandButton, 0, 4, 1, 1);
+        m_pExpandButton->setIcon(UIIconPool::iconSet(":/select_file_16px.png", ":/select_file_disabled_16px.png"));
+        connect(m_pExpandButton, &QIToolButton::clicked,
+                this, &UILocationSelector::sigExpandCollapseTreeView);
+
+    }
+    setLayout(m_pMainLayout);
+    retranslateUi();
+}
+
+/*********************************************************************************************************************************
+*   UIVisoBrowserBase implementation.                                                                                   *
+*********************************************************************************************************************************/
 
 UIVisoBrowserBase::UIVisoBrowserBase(QWidget *pParent /* = 0 */, QMenu *pMenu /*= 0*/)
     : QIWithRetranslateUI<QWidget>(pParent)
     , m_pTreeView(0)
-    , m_pTitleLabel(0)
-    , m_pRightContainerWidget(0)
-    , m_pRightContainerLayout(0)
     , m_pVerticalToolBar(0)
     , m_pMenu(pMenu)
     , m_pMainLayout(0)
-    , m_pHorizontalSplitter(0)
+    , m_pLocationSelector(0)
 {
 }
 
@@ -45,68 +164,52 @@ UIVisoBrowserBase::~UIVisoBrowserBase()
 {
 }
 
+bool UIVisoBrowserBase::isTreeViewVisible() const
+{
+    if (!m_pTreeView)
+        return false;
+    return m_pTreeView->isVisible();
+}
+
+void UIVisoBrowserBase::hideTreeView()
+{
+    if (isTreeViewVisible())
+        sltExpandCollapseTreeView();
+}
+
 void UIVisoBrowserBase::prepareObjects()
 {
     m_pMainLayout = new QGridLayout;
     setLayout(m_pMainLayout);
 
-    QWidget *pLeftContainerWidget = new QWidget;
-    m_pRightContainerWidget = new QWidget;
-
-    QVBoxLayout *pLeftContainerLayout = new QVBoxLayout;
-    m_pRightContainerLayout = new QGridLayout;
-
-    pLeftContainerLayout->setSpacing(1);
-    pLeftContainerLayout->setContentsMargins(0, 0, 0, 0);
-    m_pRightContainerLayout->setSpacing(1);
-    m_pRightContainerLayout->setContentsMargins(0, 0, 0, 0);
-
-    if (!m_pMainLayout || !pLeftContainerLayout || !m_pRightContainerLayout)
-        return;
-    if (!pLeftContainerWidget || !m_pRightContainerWidget)
+    if (!m_pMainLayout)
         return;
 
-    pLeftContainerWidget->setLayout(pLeftContainerLayout);
-    m_pRightContainerWidget->setLayout(m_pRightContainerLayout);
-
-    m_pHorizontalSplitter = new QSplitter;
-    if (!m_pHorizontalSplitter)
-        return;
-
-    m_pMainLayout->addWidget(m_pHorizontalSplitter, 1, 0);
-    m_pHorizontalSplitter->setOrientation(Qt::Horizontal);
-    m_pHorizontalSplitter->setHandleWidth(2);
-
-    m_pTitleLabel = new QLabel;
-    if (m_pTitleLabel)
+    m_pMainLayout->setRowStretch(1, 2);
+    m_pLocationSelector = new UILocationSelector;
+    if (m_pLocationSelector)
     {
-        pLeftContainerLayout->addWidget(m_pTitleLabel);
+        m_pMainLayout->addWidget(m_pLocationSelector, 0, 0, 1, 4);
     }
 
-    m_pTreeView = new QTreeView;
+    m_pTreeView = new QTreeView(this);
     if (m_pTreeView)
     {
-        pLeftContainerLayout->addWidget(m_pTreeView);
+        m_pTreeView->hide();
         m_pTreeView->setSelectionMode(QAbstractItemView::SingleSelection);
-        m_pTreeView->setAlternatingRowColors(true);
+        //m_pTreeView->setAlternatingRowColors(true);
         m_pTreeView->header()->hide();
         m_pTreeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+        m_pTreeView->setFrameStyle(QFrame::Panel | QFrame::Plain);
+        m_pTreeView->installEventFilter(this);
     }
-
 
     m_pVerticalToolBar = new UIToolBar;
     if (m_pVerticalToolBar)
     {
         m_pVerticalToolBar->setOrientation(Qt::Vertical);
-        m_pRightContainerLayout->addWidget(m_pVerticalToolBar, 0, 5, 6, 1);
+        m_pMainLayout->addWidget(m_pVerticalToolBar, 0, 5, 6, 1);
     }
-
-    m_pHorizontalSplitter->addWidget(pLeftContainerWidget);
-    m_pHorizontalSplitter->addWidget(m_pRightContainerWidget);
-    m_pHorizontalSplitter->setCollapsible(m_pHorizontalSplitter->indexOf(pLeftContainerWidget), false);
-    m_pHorizontalSplitter->setCollapsible(m_pHorizontalSplitter->indexOf(m_pRightContainerWidget), false);
-    m_pHorizontalSplitter->setStretchFactor(0, 1);
-    m_pHorizontalSplitter->setStretchFactor(1, 3);
 }
 
 void UIVisoBrowserBase::prepareConnections()
@@ -118,7 +221,59 @@ void UIVisoBrowserBase::prepareConnections()
         connect(m_pTreeView, &QTreeView::clicked,
                 this, &UIVisoBrowserBase::sltHandleTreeItemClicked);
     }
+    if (m_pLocationSelector)
+        connect(m_pLocationSelector, &UILocationSelector::sigExpandCollapseTreeView,
+                this, &UIVisoBrowserBase::sltExpandCollapseTreeView);
 }
+
+void UIVisoBrowserBase::updateLocationSelectorText(const QString &strText)
+{
+    if (!m_pLocationSelector)
+        return;
+    m_pLocationSelector->updateLineEditText(strText);
+}
+
+void UIVisoBrowserBase::resizeEvent(QResizeEvent *pEvent)
+{
+    QIWithRetranslateUI<QWidget>::resizeEvent(pEvent);
+    if (m_pTreeView)
+        updateTreeViewGeometry(m_pTreeView->isVisible());
+}
+
+/* Close the tree view when it recieves focus-out and enter key press event: */
+bool UIVisoBrowserBase::eventFilter(QObject *pObj, QEvent *pEvent)
+{
+    if (pObj == m_pTreeView)
+    {
+        if(pEvent->type() == QEvent::KeyPress)
+        {
+            QKeyEvent *pKeyEvent = dynamic_cast<QKeyEvent*>(pEvent);
+            if (pKeyEvent &&
+                (pKeyEvent->key() == Qt::Key_Return ||
+                 pKeyEvent->key() == Qt::Key_Enter))
+            {
+                sltExpandCollapseTreeView();
+            }
+        }
+        else if (pEvent->type() == QEvent::FocusOut)
+        {
+                sltExpandCollapseTreeView();
+        }
+    }
+    return false;
+}
+
+void UIVisoBrowserBase::keyPressEvent(QKeyEvent *pEvent)
+{
+    if (pEvent->key() == Qt::Key_Escape)
+    {
+        if (m_pTreeView->isVisible())
+            updateTreeViewGeometry(false);
+
+    }
+    QIWithRetranslateUI<QWidget>::keyPressEvent(pEvent);
+}
+
 
 void UIVisoBrowserBase::sltHandleTableViewItemDoubleClick(const QModelIndex &index)
 {
@@ -135,13 +290,46 @@ void UIVisoBrowserBase::sltHandleTreeSelectionChanged(const QItemSelection &sele
     treeSelectionChanged(selectedIndex);
 }
 
-
 void UIVisoBrowserBase::sltHandleTreeItemClicked(const QModelIndex &modelIndex)
 {
     if (!m_pTreeView)
         return;
     m_pTreeView->setExpanded(modelIndex, true);
+    m_pTreeView->hide();
+    emit sigTreeViewVisibilityChanged(m_pTreeView->isVisible());
 }
 
+void UIVisoBrowserBase::sltExpandCollapseTreeView()
+{
+    if (!m_pTreeView)
+        return;
+    updateTreeViewGeometry(!m_pTreeView->isVisible());
+}
 
-//#include "UIVisoBrowserBase.moc"
+void UIVisoBrowserBase::updateTreeViewGeometry(bool fShow)
+{
+    if (!m_pTreeView)
+        return;
+
+    if (!fShow)
+    {
+        m_pTreeView->hide();
+        emit sigTreeViewVisibilityChanged(m_pTreeView->isVisible());
+        m_pTreeView->clearFocus();
+            return;
+    }
+    if (!m_pLocationSelector)
+        return;
+
+    int iy = m_pLocationSelector->y() + m_pLocationSelector->height();
+    int ix = m_pLocationSelector->x();
+    int iWidth = m_pLocationSelector->lineEditWidth();
+    m_pTreeView-> move(ix, iy);
+    m_pTreeView->raise();
+    m_pTreeView->resize(iWidth, 0.75 * height());
+    m_pTreeView->show();
+    m_pTreeView->setFocus();
+    emit sigTreeViewVisibilityChanged(m_pTreeView->isVisible());
+}
+
+#include "UIVisoBrowserBase.moc"

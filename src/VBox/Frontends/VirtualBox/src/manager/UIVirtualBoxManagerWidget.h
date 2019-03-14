@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxManagerWidget.h 76581 2019-01-01 06:24:57Z vboxsync $ */
+/* $Id: UIVirtualBoxManagerWidget.h 77315 2019-02-14 15:53:43Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxManagerWidget class declaration.
  */
@@ -144,15 +144,11 @@ private slots:
 
     /** @name Common stuff.
       * @{ */
-        /** Handles signal about Chooser-pane index change.
-          * @param  fUpdateDetails    Brings whether details should be updated.
-          * @param  fUpdateSnapshots  Brings whether snapshots should be updated.
-          * @param  fUpdateLogs       Brings whether log-viewer should be updated. */
-        void sltHandleChooserPaneIndexChange(bool fUpdateDetails = true,
-                                             bool fUpdateSnapshots = true,
-                                             bool fUpdateLogs = true);
-        /** Handles signal about Chooser-pane index change the default way. */
-        void sltHandleChooserPaneIndexChangeDefault() { sltHandleChooserPaneIndexChange(); }
+        /** Handles signal about Chooser-pane index change. */
+        void sltHandleChooserPaneIndexChange();
+
+        /** Handles signal about Chooser-pane selection invalidated. */
+        void sltHandleChooserPaneSelectionInvalidated() { recacheCurrentItemInformation(true /* fDontRaiseErrorPane */); }
 
         /** Handles sliding animation complete signal.
           * @param  enmDirection  Brings which direction was animation finished for. */
@@ -188,6 +184,13 @@ private:
         void saveSettings();
         /** Cleanups window. */
         void cleanup();
+    /** @} */
+
+    /** @name Common stuff.
+      * @{ */
+        /** Recaches current item information.
+          * @param  fDontRaiseErrorPane  Brings whether we should not raise error-pane. */
+        void recacheCurrentItemInformation(bool fDontRaiseErrorPane = false);
     /** @} */
 
     /** Holds the action-pool instance. */

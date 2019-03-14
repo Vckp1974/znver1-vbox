@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreator.h 76959 2019-01-23 18:45:09Z vboxsync $ */
+/* $Id: UIVisoCreator.h 77322 2019-02-14 20:11:08Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoCreator class declaration.
  */
@@ -69,7 +69,7 @@ public:
 
 protected:
 
-    void retranslateUi();
+    virtual void retranslateUi() /* override */;
 
 private slots:
 
@@ -79,6 +79,7 @@ private slots:
     void sltHandleCustomVisoOptionsChanged(const QStringList &customVisoOptions);
     void sltHandleShowHiddenObjectsChange(bool fShow);
     void sltHandleHidePanel(UIDialogPanel *pPanel);
+    void sltHandleBrowserTreeViewVisibilityChanged(bool fVisible);
 
 private:
     struct VisoOptions
@@ -107,13 +108,14 @@ private:
     void showPanel(UIDialogPanel *panel);
     /** Makes sure escape key is assigned to only a single widget. This is done by checking
         several things in the following order:
+        - when tree views of browser panes are visible esc. key used to close those. thus it is taken from the dialog and panels
         - when there are no more panels visible assign it to the parent dialog
         - grab it from the dialog as soon as a panel becomes visible again
         - assign it to the most recently "unhidden" panel */
     void manageEscapeShortCut();
 
     QVBoxLayout          *m_pMainLayout;
-    QSplitter            *m_pVerticalSplitter;
+    QSplitter            *m_pHorizontalSplitter;
     UIVisoHostBrowser    *m_pHostBrowser;
     UIVisoContentBrowser *m_pVisoBrowser;
     QIDialogButtonBox    *m_pButtonBox;

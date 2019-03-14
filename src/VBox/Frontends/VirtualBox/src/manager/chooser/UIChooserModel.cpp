@@ -1,4 +1,4 @@
-/* $Id: UIChooserModel.cpp 77305 2019-02-13 17:34:03Z vboxsync $ */
+/* $Id: UIChooserModel.cpp 77316 2019-02-14 15:57:28Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserModel class implementation.
  */
@@ -952,6 +952,7 @@ void UIChooserModel::sltUngroupSelectedGroup()
     }
 
     /* Copy all the children into our parent: */
+    QList<UIChooserItem*> copiedItems;
     foreach (UIChooserItem *pItem, pFocusItem->items())
     {
         if (toBeRemoved.contains(pItem))
@@ -963,11 +964,13 @@ void UIChooserModel::sltUngroupSelectedGroup()
                 UIChooserItemGroup *pGroupItem = new UIChooserItemGroup(pParentItem, pItem->toGroupItem());
                 if (toBeRenamed.contains(pItem))
                     pGroupItem->setName(uniqueGroupName(pParentItem));
+                copiedItems << pGroupItem;
                 break;
             }
             case UIChooserItemType_Machine:
             {
-                new UIChooserItemMachine(pParentItem, pItem->toMachineItem());
+                UIChooserItemMachine *pMachineItem = new UIChooserItemMachine(pParentItem, pItem->toMachineItem());
+                copiedItems << pMachineItem;
                 break;
             }
         }
@@ -976,10 +979,19 @@ void UIChooserModel::sltUngroupSelectedGroup()
     /* Delete focus group: */
     delete focusItem();
 
+    /* Notify about selection invalidated: */
+    emit sigSelectionInvalidated();
+
     /* And update model: */
     updateNavigation();
     updateLayout();
-    setCurrentItem(navigationList().first());
+    if (!copiedItems.isEmpty())
+    {
+        setCurrentItems(copiedItems);
+        setFocusItem(currentItem());
+    }
+    else
+        setCurrentItem(navigationList().first());
     saveGroupSettings();
 }
 
@@ -1445,6 +1457,8 @@ void UIChooserModel::prepareConnections()
     /* Setup parent connections: */
     connect(this, SIGNAL(sigSelectionChanged()),
             parent(), SIGNAL(sigSelectionChanged()));
+    connect(this, SIGNAL(sigSelectionInvalidated()),
+            parent(), SIGNAL(sigSelectionInvalidated()));
     connect(this, SIGNAL(sigSlidingStarted()),
             parent(), SIGNAL(sigSlidingStarted()));
     connect(this, SIGNAL(sigToggleStarted()),
