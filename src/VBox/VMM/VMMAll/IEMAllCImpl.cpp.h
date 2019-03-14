@@ -1,4 +1,4 @@
-/* $Id: IEMAllCImpl.cpp.h 76553 2019-01-01 01:45:53Z vboxsync $ */
+/* $Id: IEMAllCImpl.cpp.h 77094 2019-02-01 08:54:35Z vboxsync $ */
 /** @file
  * IEM - Instruction Implementation in C/C++ (code include).
  */
@@ -5994,7 +5994,7 @@ IEM_CIMPL_DEF_2(iemCImpl_mov_Cd_Rd, uint8_t, iCrReg, uint8_t, iGReg)
             case 8: rcStrict = iemVmxVmexitInstrMovToCr8(pVCpu, iGReg, cbInstr);                        break;
         }
         if (rcStrict != VINF_VMX_INTERCEPT_NOT_ACTIVE)
-                return rcStrict;
+            return rcStrict;
     }
 #endif
 
@@ -6568,7 +6568,7 @@ IEM_CIMPL_DEF_0(iemCImpl_rdtsc)
      * Do the job.
      */
     uint64_t uTicks = TMCpuTickGet(pVCpu);
-#ifdef VBOX_WITH_NESTED_HWVIRT_SVM
+#if defined(VBOX_WITH_NESTED_HWVIRT_SVM) || defined(VBOX_WITH_NESTED_HWVIRT_VMX)
     uTicks = CPUMApplyNestedGuestTscOffset(pVCpu, uTicks);
 #endif
     pVCpu->cpum.GstCtx.rax = RT_LO_U32(uTicks);
@@ -6625,7 +6625,7 @@ IEM_CIMPL_DEF_0(iemCImpl_rdtscp)
         pVCpu->cpum.GstCtx.rcx &= UINT32_C(0xffffffff);
 
         uint64_t uTicks = TMCpuTickGet(pVCpu);
-#ifdef VBOX_WITH_NESTED_HWVIRT_SVM
+#if defined(VBOX_WITH_NESTED_HWVIRT_SVM) || defined(VBOX_WITH_NESTED_HWVIRT_VMX)
         uTicks = CPUMApplyNestedGuestTscOffset(pVCpu, uTicks);
 #endif
         pVCpu->cpum.GstCtx.rax = RT_LO_U32(uTicks);
