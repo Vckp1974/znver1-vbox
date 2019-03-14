@@ -1,4 +1,4 @@
-/* $Id: UIVisoContentBrowser.cpp 77405 2019-02-20 20:39:07Z vboxsync $ */
+/* $Id: UIVisoContentBrowser.cpp 77528 2019-03-01 13:07:07Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoContentBrowser class implementation.
  */
@@ -17,24 +17,16 @@
 
 
 /* Qt includes: */
-#include <QAction>
-#include <QAbstractItemModel>
-#include <QDateTime>
 #include <QDir>
-#include <QFileSystemModel>
-#include <QHBoxLayout>
+#include <QFileInfo>
+#include <QGridLayout>
 #include <QHeaderView>
-#include <QLabel>
-#include <QListView>
-#include <QMenu>
 #include <QMimeData>
-#include <QSplitter>
 #include <QTableView>
 #include <QTreeView>
 
 /* GUI includes: */
 #include "UICustomFileSystemModel.h"
-#include "UIIconPool.h"
 #include "UIPathOperations.h"
 #include "UIVisoContentBrowser.h"
 
@@ -459,7 +451,6 @@ UICustomFileSystemItem* UIVisoContentBrowser::rootItem()
     return m_pModel->rootItem();
 }
 
-
 void UIVisoContentBrowser::initializeModel()
 {
     if (m_pModel)
@@ -549,8 +540,6 @@ void UIVisoContentBrowser::setTreeCurrentIndex(QModelIndex index /* = QModelInde
     pSelectionModel->blockSignals(false);
     m_pTreeView->blockSignals(false);
 }
-
-
 
 void UIVisoContentBrowser::treeSelectionChanged(const QModelIndex &selectedTreeIndex)
 {

@@ -1,4 +1,4 @@
-/* $Id: UIVisoBrowserBase.cpp 77405 2019-02-20 20:39:07Z vboxsync $ */
+/* $Id: UIVisoBrowserBase.cpp 77519 2019-03-01 10:19:54Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoBrowserBase class implementation.
  */
@@ -18,18 +18,13 @@
 /* Qt includes: */
 #include <QHeaderView>
 #include <QGridLayout>
-#include <QLabel>
 #include <QLineEdit>
-#include <QSplitter>
-#include <QTableView>
 #include <QTreeView>
-#include <QVBoxLayout>
 
 /* GUI includes: */
 #include "QIToolButton.h"
 #include "UIIconPool.h"
 #include "UIVisoBrowserBase.h"
-
 
 /*********************************************************************************************************************************
 *   UILocationSelector definition.                                                                                   *
@@ -39,15 +34,16 @@
 class UILocationSelector : public QIWithRetranslateUI<QWidget>
 {
     Q_OBJECT;
+
+signals:
+
+    void sigExpandCollapseTreeView();
 public:
 
     UILocationSelector(QWidget *pParent = 0);
     int  lineEditWidth() const;
     void updateLineEditText(const QString &strText);
 
-signals:
-
-    void sigExpandCollapseTreeView();
 
 protected:
 

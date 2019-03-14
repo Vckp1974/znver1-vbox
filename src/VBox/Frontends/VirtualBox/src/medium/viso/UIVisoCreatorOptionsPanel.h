@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreatorOptionsPanel.h 76947 2019-01-23 09:26:31Z vboxsync $ */
+/* $Id: UIVisoCreatorOptionsPanel.h 77519 2019-03-01 10:19:54Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoCreatorOptionsPanel class declaration.
  */
@@ -27,11 +27,14 @@ class QILabel;
 
 /* GUI includes: */
 #include "UIDialogPanel.h"
-#include "QIWithRetranslateUI.h"
 
 class UIVisoCreatorOptionsPanel : public UIDialogPanel
 {
     Q_OBJECT;
+
+signals:
+
+    void sigShowHiddenObjects(bool fShow);
 
 public:
 
@@ -39,10 +42,6 @@ public:
     ~UIVisoCreatorOptionsPanel();
     virtual QString panelName() const /* override */;
     void setShowHiddenbjects(bool fShow);
-
-signals:
-
-    void sigShowHiddenObjects(bool fShow);
 
 protected:
 

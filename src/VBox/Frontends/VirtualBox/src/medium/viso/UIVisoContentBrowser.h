@@ -1,4 +1,4 @@
-/* $Id: UIVisoContentBrowser.h 77407 2019-02-21 09:29:08Z vboxsync $ */
+/* $Id: UIVisoContentBrowser.h 77519 2019-03-01 10:19:54Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoContentBrowser class declaration.
  */
@@ -24,23 +24,18 @@
 /* Qt includes: */
 #include <QWidget>
 
-/* Qt includes: */
-#include <QModelIndex>
-#include <QFileInfo>
-
 /* GUI includes: */
 #include "UIVisoBrowserBase.h"
 
 /* COM includes: */
 #include "COMEnums.h"
 
-
 /* Forward declarations: */
+class QFileInfo;
 class UICustomFileSystemItem;
 class UICustomFileSystemModel;
 class UICustomFileSystemProxyModel;
 class UIVisoContentTreeProxyModel;
-class UICustomFileSystemItem;
 class UIVisoContentTableView;
 
 /** A UIVisoBrowserBase extension to view content of a VISO as a file tree. */
@@ -99,7 +94,6 @@ private:
     void                    prepareConnections();
     void                    initializeModel();
     UICustomFileSystemItem *rootItem();
-
 
     /** @name Index conversion functions. These are half-smart and tries to determine the source model before conversion.
       * @{ */
