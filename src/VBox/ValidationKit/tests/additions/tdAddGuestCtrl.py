@@ -27,7 +27,7 @@ CDDL are applicable instead of those of the GPL.
 You may elect to license modified versions of this file under the
 terms and conditions of either the GPL or the CDDL or both.
 """
-__version__ = "$Revision: 77471 $"
+__version__ = "$Revision: 77480 $"
 
 # Disable bitching about too many arguments per function.
 # pylint: disable=R0913
@@ -106,12 +106,11 @@ class tdCtxCreds(object):
             assert oTestVm is not None;
 
             ## @todo fix this so all VMs have several usable test users with the same passwords (or none).
-            sUser     = 'test';
-            sPassword = 'password';
             if oTestVm.isWindows():
-                #sPassword = ''; # stupid config mistake.
-                sPassword = 'password';
-                sUser     = 'Administrator';
+                sUser = 'Administrator';
+            else:
+                sUser = 'vbox';
+            sPassword = 'password';
             sDomain   = '';
 
         self.sUser     = sUser;
@@ -137,6 +136,20 @@ class tdTestGuestCtrlBase(object):
         """
         self.oTest = tdCtxTest(oSession, oTxsSession, oTestVm);
         return self.oTest;
+
+    def uploadLogData(self, oTstDrv, aData, sFileName, sDesc):
+        """
+        Uploads (binary) data to a log file for manual (later) inspection.
+        """
+        reporter.log('Creating + uploading log data file "%s"' % sFileName);
+        sHstFileName = os.path.join(oTstDrv.sScratchPath, sFileName);
+        try:
+            oCurTestFile     = open(sHstFileName, "wb");
+            oCurTestFile.write(aData);
+            oCurTestFile.close();
+            reporter.addLogFile(sHstFileName, 'misc/other', sDesc);
+        except:
+            reporter.error('Unable to create temporary file for "%s"' % sDesc);
 
     def createSession(self, sName):
         """
@@ -1619,6 +1632,11 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
             sPassword = "password";
             sDomain = "";
             sFile = "C:\\windows\\system32\\kernel32.dll";
+        elif oTestVm.isLinux():
+            sUser = "vbox";
+            sPassword = "password";
+            sDomain = "";
+            sFile = "/bin/sh";
 
         # Number of stale guest files to create.
         cStaleFiles = 10;
@@ -1751,10 +1769,13 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
 
         if oTestVm.isWindows():
             sUser = "Administrator";
-            sPassword = "password";
-            sDomain = "";
             sCmd = "C:\\windows\\system32\\cmd.exe";
-            aArgs = [sCmd,];
+        elif oTestVm.isLinux():
+            sUser = "vbox";
+            sCmd = "/bin/sh";
+        sPassword = "password";
+        sDomain = "";
+        aArgs = [sCmd,];
 
         # Number of stale guest processes to create.
         cStaleProcs = 10;
@@ -1809,6 +1830,8 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
                 #
                 if oTestVm.isWindows():
                     aArgs = [ sCmd, '/C', 'dir', '/S', 'C:\\Windows\\system'];
+                else:
+                    aArgs = [ sCmd, '-c', 'date'];
                 reporter.log2('Starting non-stale processes');
                 aaProcs = [];
                 for i in range(0, cStaleProcs):
@@ -1859,6 +1882,8 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
                 # Fire off blocking processes which are terminated via terminate().
                 if oTestVm.isWindows():
                     aArgs = [ sCmd, '/C', 'dir', '/S', 'C:\\Windows'];
+                else:
+                    aArgs = [ sCmd ];
                 reporter.log2('Starting blocking processes');
                 aaProcs = [];
                 for i in range(0, cStaleProcs):
@@ -1907,11 +1932,9 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
         sPassword = "password";
 
         if oTestVm.isWindows():
-            # Outputting stuff.
             sImageOut = "C:\\windows\\system32\\cmd.exe";
         else:
-            reporter.error('Implement me!'); ## @todo Implement non-Windows bits.
-            return (False, oTxsSession);
+            sImageOut = "/bin/sh";
 
         aaInvalid = [
             # Invalid parameters.
@@ -2156,11 +2179,9 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
         sPassword = "password";
 
         if oTestVm.isWindows():
-            # Outputting stuff.
             sImage = "C:\\windows\\system32\\cmd.exe";
         else:
-            reporter.error('Implement me!'); ## @todo Implement non-Windows bits.
-            return (False, oTxsSession);
+            sImage = "/bin/sh";
 
         aaTests = [];
         if oTestVm.isWindows():
@@ -2258,14 +2279,12 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
         else:
             sUser = "vbox";
         sPassword = "password";
-        sDomain = "";
+        sDomain   = "";
 
         if oTestVm.isWindows():
-            # Outputting stuff.
             sImage = "C:\\windows\\system32\\cmd.exe";
         else:
-            reporter.error('Implement me!'); ## @todo Implement non-Windows bits.
-            return (False, oTxsSession);
+            sImage = "/bin/sh";
 
         fRc = True;
         try:
@@ -2352,6 +2371,8 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
 
         if oTestVm.isWindows():
             sScratch  = "C:\\Temp\\vboxtest\\testGuestCtrlDirCreate\\";
+        else:
+            sScratch  = "/tmp/testGuestCtrlDirCreate/";
 
         aaTests = [];
         if oTestVm.isWindows():
@@ -2429,9 +2450,6 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
         else:
             sUser = "vbox";
         sPassword = "password";
-
-        # if oTestVm.isWindows():
-        #     sScratch = "C:\\Temp\\vboxtest\\testGuestCtrlDirCreateTemp\\";
 
         aaTests = [];
         if oTestVm.isWindows():
@@ -3098,17 +3116,11 @@ class SubTstDrvAddGuestCtrl(base.SubTestDriverBase):
                             aGstFiles.append(curTest.sFile.replace('\\', '/'));
                             self.oTstDrv.txsDownloadFiles(oSession, oTxsSession, aGstFiles, fIgnoreErrors = True);
 
-                            # Create file with buffer content on host.
-                            sHstFileName = os.path.join(self.oTstDrv.sScratchPath, ('testGuestCtrlWriteTest%d' % i));
-                            try:
-                                oCurTestFile     = open(sHstFileName, "wb");
-                                oCurTestFile.write(aBufRead);
-                                oCurTestFile.close();
-                                reporter.addLogFile(sHstFileName, 'misc/other',
-                                                    'Buffer of testGuestCtrlFileWrite test #%d' % i);
-                            except:
-                                reporter.error('Test #%d failed: Unable to create temporary buffer file "%s"' \
-                                               % (i, sHstFileName));
+                            # Create files with buffer contents and upload those for later (manual) inspection.
+                            curTest.uploadLogData(self.oTstDrv, curRes.aBuf, ('testGuestCtrlWriteTest%d-BufExcepted' % i),
+                                                                             ('Test #%d: Expected buffer' % i));
+                            curTest.uploadLogData(self.oTstDrv, aBufRead,    ('testGuestCtrlWriteTest%d-BufGot' % i),
+                                                                             ('Test #%d: Got buffer' % i));
                             fRc = False;
                 # Test final offset.
                 curOffset = long(curFile.offset);
