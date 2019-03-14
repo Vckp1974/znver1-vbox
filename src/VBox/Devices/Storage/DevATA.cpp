@@ -1,4 +1,4 @@
-/* $Id: DevATA.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
+/* $Id: DevATA.cpp 77012 2019-01-27 09:49:09Z vboxsync $ */
 /** @file
  * VBox storage devices: ATA/ATAPI controller device (disk and cdrom).
  */
@@ -1055,52 +1055,65 @@ static void ataR3AbortCurrentCommand(ATADevState *s, bool fResetDrive)
 }
 # endif /* IN_RING3 */
 
+/**
+ * Set the internal interrupt pending status, update INTREQ as appropriate.
+ *
+ * @param   s           Pointer to the ATA device state data.
+ */
 static void ataHCSetIRQ(ATADevState *s)
 {
     PATACONTROLLER pCtl = ATADEVSTATE_2_CONTROLLER(s);
     PPDMDEVINS pDevIns = ATADEVSTATE_2_DEVINS(s);
 
-    if (!(s->uATARegDevCtl & ATA_DEVCTL_DISABLE_IRQ))
-    {
-        Log2(("%s: LUN#%d asserting IRQ\n", __FUNCTION__, s->iLUN));
-        /* The BMDMA unit unconditionally sets BM_STATUS_INT if the interrupt
-         * line is asserted. It monitors the line for a rising edge. */
-        if (!s->fIrqPending)
-            pCtl->BmDma.u8Status |= BM_STATUS_INT;
-        /* Only actually set the IRQ line if updating the currently selected drive. */
-        if (s == &pCtl->aIfs[pCtl->iSelectedIf])
+    if (!s->fIrqPending) {
+        if (!(s->uATARegDevCtl & ATA_DEVCTL_DISABLE_IRQ))
         {
-            /** @todo experiment with adaptive IRQ delivery: for reads it is
-             * better to wait for IRQ delivery, as it reduces latency. */
-            if (pCtl->irq == 16)
-                PDMDevHlpPCISetIrq(pDevIns, 0, 1);
-            else
-                PDMDevHlpISASetIrq(pDevIns, pCtl->irq, 1);
+            Log2(("%s: LUN#%d asserting IRQ\n", __FUNCTION__, s->iLUN));
+            /* The BMDMA unit unconditionally sets BM_STATUS_INT if the interrupt
+             * line is asserted. It monitors the line for a rising edge. */
+            pCtl->BmDma.u8Status |= BM_STATUS_INT;
+            /* Only actually set the IRQ line if updating the currently selected drive. */
+            if (s == &pCtl->aIfs[pCtl->iSelectedIf])
+            {
+                /** @todo experiment with adaptive IRQ delivery: for reads it is
+                 * better to wait for IRQ delivery, as it reduces latency. */
+                if (pCtl->irq == 16)
+                    PDMDevHlpPCISetIrq(pDevIns, 0, 1);
+                else
+                    PDMDevHlpISASetIrq(pDevIns, pCtl->irq, 1);
+            }
         }
+        s->fIrqPending = true;
     }
-    s->fIrqPending = true;
 }
 
 #endif /* IN_RING0 || IN_RING3 */
 
+/**
+ * Clear the internal interrupt pending status, update INTREQ as appropriate.
+ *
+ * @param   s           Pointer to the ATA device state data.
+ */
 static void ataUnsetIRQ(ATADevState *s)
 {
     PATACONTROLLER pCtl = ATADEVSTATE_2_CONTROLLER(s);
     PPDMDEVINS pDevIns = ATADEVSTATE_2_DEVINS(s);
 
-    if (!(s->uATARegDevCtl & ATA_DEVCTL_DISABLE_IRQ))
-    {
-        Log2(("%s: LUN#%d deasserting IRQ\n", __FUNCTION__, s->iLUN));
-        /* Only actually unset the IRQ line if updating the currently selected drive. */
-        if (s == &pCtl->aIfs[pCtl->iSelectedIf])
+    if (s->fIrqPending) {
+        if (!(s->uATARegDevCtl & ATA_DEVCTL_DISABLE_IRQ))
         {
-            if (pCtl->irq == 16)
-                PDMDevHlpPCISetIrq(pDevIns, 0, 0);
-            else
-                PDMDevHlpISASetIrq(pDevIns, pCtl->irq, 0);
+            Log2(("%s: LUN#%d deasserting IRQ\n", __FUNCTION__, s->iLUN));
+            /* Only actually unset the IRQ line if updating the currently selected drive. */
+            if (s == &pCtl->aIfs[pCtl->iSelectedIf])
+            {
+                if (pCtl->irq == 16)
+                    PDMDevHlpPCISetIrq(pDevIns, 0, 0);
+                else
+                    PDMDevHlpISASetIrq(pDevIns, pCtl->irq, 0);
+            }
         }
+        s->fIrqPending = false;
     }
-    s->fIrqPending = false;
 }
 
 #if defined(IN_RING0) || defined(IN_RING3)
@@ -1529,6 +1542,7 @@ static uint64_t ataR3GetSector(ATADevState *s)
         iLBA = ((s->uATARegHCyl << 8) | s->uATARegLCyl) * s->PCHSGeometry.cHeads * s->PCHSGeometry.cSectors +
             (s->uATARegSelect & 0x0f) * s->PCHSGeometry.cSectors +
             (s->uATARegSector - 1);
+        LogFlowFunc(("CHS %u/%u/%u -> LBA %llu\n", (s->uATARegHCyl << 8) | s->uATARegLCyl, s->uATARegSelect & 0x0f, s->uATARegSector, iLBA));
     }
     return iLBA;
 }
@@ -1567,6 +1581,7 @@ static void ataR3SetSector(ATADevState *s, uint64_t iLBA)
         s->uATARegLCyl = cyl;
         s->uATARegSelect = (s->uATARegSelect & 0xf0) | ((r / s->PCHSGeometry.cSectors) & 0x0f);
         s->uATARegSector = (r % s->PCHSGeometry.cSectors) + 1;
+        LogFlowFunc(("LBA %llu -> CHS %u/%u/%u\n", iLBA, cyl, s->uATARegSelect & 0x0f, s->uATARegSector));
     }
 }
 
@@ -4411,6 +4426,7 @@ static int ataIOPortWriteU8(PATACONTROLLER pCtl, uint32_t addr, uint32_t val)
             /* Don't do anything complicated in GC */
             return VINF_IOM_R3_IOPORT_WRITE;
 #else /* IN_RING3 */
+            ataUnsetIRQ(&pCtl->aIfs[pCtl->iSelectedIf]);
             ataR3ParseCmd(&pCtl->aIfs[pCtl->iSelectedIf], val);
 #endif /* !IN_RING3 */
     }
