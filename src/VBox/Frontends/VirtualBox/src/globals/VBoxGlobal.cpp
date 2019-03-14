@@ -1,4 +1,4 @@
-/* $Id: VBoxGlobal.cpp 77001 2019-01-26 13:19:50Z vboxsync $ */
+/* $Id: VBoxGlobal.cpp 77167 2019-02-05 14:44:28Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBoxGlobal class implementation.
  */
@@ -78,6 +78,7 @@
 #include "UIVirtualBoxEventHandler.h"
 #include "UIDesktopWidgetWatchdog.h"
 #include "UIVisoCreator.h"
+#include "UIWizardNewVD.h"
 #ifdef VBOX_WS_X11
 # include "UIHostComboEditor.h"
 # include "VBoxX11Helper.h"
@@ -2647,6 +2648,8 @@ QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QStrin
     {
         QStringList files = pVisoCreator->entryList();
         QString strVisoName = pVisoCreator->visoName();
+        if (strVisoName.isEmpty())
+            strVisoName = strMachineName;
 
         if (files.empty() || files[0].isEmpty())
             return QUuid();
@@ -2655,7 +2658,8 @@ QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QStrin
 
         /* Produce the VISO. */
         char szVisoPath[RTPATH_MAX];
-        int vrc = RTPathJoin(szVisoPath, sizeof(szVisoPath), strFolder.toUtf8().constData(), "ad-hoc.viso");
+        QString strFileName = QString("%1%2").arg(strVisoName).arg(".viso");
+        int vrc = RTPathJoin(szVisoPath, sizeof(szVisoPath), strFolder.toUtf8().constData(), strFileName.toUtf8().constData());
         if (RT_SUCCESS(vrc))
         {
             PRTSTREAM pStrmViso;
@@ -2667,8 +2671,7 @@ QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QStrin
                 if (RT_SUCCESS(vrc))
                 {
                     RTStrmPrintf(pStrmViso, "--iprt-iso-maker-file-marker-bourne-sh %RTuuid\n", &Uuid);
-                    if (!strVisoName.isEmpty())
-                        RTStrmPrintf(pStrmViso, "--volume-id=%s\n", strVisoName.toUtf8().constData());
+                    RTStrmPrintf(pStrmViso, "--volume-id=%s\n", strVisoName.toUtf8().constData());
 
                     for (int iFile = 0; iFile < files.size(); iFile++)
                     {
@@ -2748,6 +2751,21 @@ QUuid VBoxGlobal::openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType 
     }
     delete pSelector;
     return QUuid();
+}
+
+QUuid VBoxGlobal::createHDWithNewHDWizard(QWidget *pParent, const QString &strMachineGuestOSTypeId,
+                                          const QString &strMachineFolder)
+{
+    /* Initialize variables: */
+    const CGuestOSType comGuestOSType = vboxGlobal().virtualBox().GetGuestOSType(strMachineGuestOSTypeId);
+    const QFileInfo fileInfo(strMachineFolder);
+    /* Show New VD wizard: */
+    UISafePointerWizardNewVD pWizard = new UIWizardNewVD(pParent, QString(), fileInfo.absolutePath(), comGuestOSType.GetRecommendedHDD());
+    pWizard->prepare();
+    const QUuid uResult = pWizard->exec() == QDialog::Accepted ? pWizard->virtualDisk().GetId() : QUuid();
+    if (pWizard)
+        delete pWizard;
+    return uResult;
 }
 
 void VBoxGlobal::prepareStorageMenu(QMenu &menu,
