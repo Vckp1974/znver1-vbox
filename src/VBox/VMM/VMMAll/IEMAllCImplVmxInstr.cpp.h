@@ -1,4 +1,4 @@
-/* $Id: IEMAllCImplVmxInstr.cpp.h 76821 2019-01-15 04:51:22Z vboxsync $ */
+/* $Id: IEMAllCImplVmxInstr.cpp.h 76837 2019-01-16 13:31:10Z vboxsync $ */
 /** @file
  * IEM - VT-x instruction implementation.
  */
@@ -2045,7 +2045,7 @@ IEM_STATIC VBOXSTRICTRC iemVmxAbort(PVMCPU pVCpu, VMXABORT enmAbort)
     if (IEM_VMX_HAS_CURRENT_VMCS(pVCpu))
     {
         RTGCPHYS const GCPhysVmcs  = IEM_VMX_GET_CURRENT_VMCS(pVCpu);
-        uint32_t const offVmxAbort = RT_UOFFSETOF(VMXVVMCS, u32VmxAbortId);
+        uint32_t const offVmxAbort = RT_UOFFSETOF(VMXVVMCS, enmVmxAbort);
         PGMPhysSimpleWriteGCPhys(pVCpu->CTX_SUFF(pVM), GCPhysVmcs + offVmxAbort, &enmAbort, sizeof(enmAbort));
     }
 
@@ -2159,67 +2159,48 @@ IEM_STATIC void iemVmxVmexitLoadHostSegRegs(PVMCPU pVCpu)
         /* Limit. */
         pVCpu->cpum.GstCtx.aSRegs[iSegReg].u32Limit = 0xffffffff;
 
-        /* Base and Attributes. */
-        switch (iSegReg)
+        /* Base. */
+        pVCpu->cpum.GstCtx.aSRegs[iSegReg].u64Base = 0;
+
+        /* Attributes. */
+        if (iSegReg == X86_SREG_CS)
         {
-            case X86_SREG_CS:
-            {
-                pVCpu->cpum.GstCtx.cs.u64Base = 0;
-                pVCpu->cpum.GstCtx.cs.Attr.n.u4Type        = X86_SEL_TYPE_CODE | X86_SEL_TYPE_READ | X86_SEL_TYPE_ACCESSED;
-                pVCpu->cpum.GstCtx.ss.Attr.n.u1DescType    = 1;
-                pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl         = 0;
-                pVCpu->cpum.GstCtx.cs.Attr.n.u1Present     = 1;
-                pVCpu->cpum.GstCtx.cs.Attr.n.u1Long        = fHostInLongMode;
-                pVCpu->cpum.GstCtx.cs.Attr.n.u1DefBig      = !fHostInLongMode;
-                pVCpu->cpum.GstCtx.cs.Attr.n.u1Granularity = 1;
-                Assert(!pVCpu->cpum.GstCtx.cs.Attr.n.u1Unusable);
-                Assert(!fUnusable);
-                break;
-            }
-
-            case X86_SREG_SS:
-            case X86_SREG_ES:
-            case X86_SREG_DS:
-            {
-                pVCpu->cpum.GstCtx.aSRegs[iSegReg].u64Base = 0;
-                pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u4Type        = X86_SEL_TYPE_RW | X86_SEL_TYPE_ACCESSED;
-                pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1DescType    = 1;
-                pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u2Dpl         = 0;
-                pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1Present     = 1;
-                pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1DefBig      = 1;
-                pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1Granularity = 1;
-                pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1Unusable    = fUnusable;
-                break;
-            }
-
-            case X86_SREG_FS:
-            {
-                Assert(X86_IS_CANONICAL(pVmcs->u64HostFsBase.u));
-                pVCpu->cpum.GstCtx.fs.u64Base = !fUnusable ? pVmcs->u64HostFsBase.u : 0;
-                pVCpu->cpum.GstCtx.fs.Attr.n.u4Type        = X86_SEL_TYPE_RW | X86_SEL_TYPE_ACCESSED;
-                pVCpu->cpum.GstCtx.fs.Attr.n.u1DescType    = 1;
-                pVCpu->cpum.GstCtx.fs.Attr.n.u2Dpl         = 0;
-                pVCpu->cpum.GstCtx.fs.Attr.n.u1Present     = 1;
-                pVCpu->cpum.GstCtx.fs.Attr.n.u1DefBig      = 1;
-                pVCpu->cpum.GstCtx.fs.Attr.n.u1Granularity = 1;
-                pVCpu->cpum.GstCtx.fs.Attr.n.u1Unusable    = fUnusable;
-                break;
-            }
-
-            case X86_SREG_GS:
-            {
-                Assert(X86_IS_CANONICAL(pVmcs->u64HostGsBase.u));
-                pVCpu->cpum.GstCtx.gs.u64Base = !fUnusable ? pVmcs->u64HostGsBase.u : 0;
-                pVCpu->cpum.GstCtx.gs.Attr.n.u4Type        = X86_SEL_TYPE_RW | X86_SEL_TYPE_ACCESSED;
-                pVCpu->cpum.GstCtx.gs.Attr.n.u1DescType    = 1;
-                pVCpu->cpum.GstCtx.gs.Attr.n.u2Dpl         = 0;
-                pVCpu->cpum.GstCtx.gs.Attr.n.u1Present     = 1;
-                pVCpu->cpum.GstCtx.gs.Attr.n.u1DefBig      = 1;
-                pVCpu->cpum.GstCtx.gs.Attr.n.u1Granularity = 1;
-                pVCpu->cpum.GstCtx.gs.Attr.n.u1Unusable    = fUnusable;
-                break;
-            }
+            pVCpu->cpum.GstCtx.cs.Attr.n.u4Type        = X86_SEL_TYPE_CODE | X86_SEL_TYPE_READ | X86_SEL_TYPE_ACCESSED;
+            pVCpu->cpum.GstCtx.ss.Attr.n.u1DescType    = 1;
+            pVCpu->cpum.GstCtx.cs.Attr.n.u2Dpl         = 0;
+            pVCpu->cpum.GstCtx.cs.Attr.n.u1Present     = 1;
+            pVCpu->cpum.GstCtx.cs.Attr.n.u1Long        = fHostInLongMode;
+            pVCpu->cpum.GstCtx.cs.Attr.n.u1DefBig      = !fHostInLongMode;
+            pVCpu->cpum.GstCtx.cs.Attr.n.u1Granularity = 1;
+            Assert(!pVCpu->cpum.GstCtx.cs.Attr.n.u1Unusable);
+            Assert(!fUnusable);
         }
+        else
+        {
+            pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u4Type        = X86_SEL_TYPE_RW | X86_SEL_TYPE_ACCESSED;
+            pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1DescType    = 1;
+            pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u2Dpl         = 0;
+            pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1Present     = 1;
+            pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1DefBig      = 1;
+            pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1Granularity = 1;
+            pVCpu->cpum.GstCtx.aSRegs[iSegReg].Attr.n.u1Unusable    = fUnusable;
+        }
+    }
+
+    /* FS base. */
+    if (   !pVCpu->cpum.GstCtx.fs.Attr.n.u1Unusable
+        ||  fHostInLongMode)
+    {
+        Assert(X86_IS_CANONICAL(pVmcs->u64HostFsBase.u));
+        pVCpu->cpum.GstCtx.fs.u64Base = pVmcs->u64HostFsBase.u;
+    }
+
+    /* GS base. */
+    if (   !pVCpu->cpum.GstCtx.gs.Attr.n.u1Unusable
+        ||  fHostInLongMode)
+    {
+        Assert(X86_IS_CANONICAL(pVmcs->u64HostGsBase.u));
+        pVCpu->cpum.GstCtx.gs.u64Base = pVmcs->u64HostGsBase.u;
     }
 
     /* TR. */
@@ -3095,7 +3076,6 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitMtf(PVMCPU pVCpu)
     VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_VMX_PREEMPT_TIMER);
 
     /* Cause the MTF VM-exit. The VM-exit qualification MBZ. */
-    iemVmxVmcsSetExitQual(pVCpu, 0);
     return iemVmxVmexit(pVCpu, VMX_EXIT_MTF);
 }
 
@@ -3755,7 +3735,7 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitTaskSwitch(PVMCPU pVCpu, IEMTASKSWITCH enmTa
     /*
      * Task-switch VM-exits are unconditional and provide the VM-exit qualification.
      *
-     * If the the cause of the task switch is due to execution of CALL, IRET or the JMP
+     * If the cause of the task switch is due to execution of CALL, IRET or the JMP
      * instruction or delivery of the exception generated by one of these instructions
      * lead to a task switch through a task gate in the IDT, we need to provide the
      * VM-exit instruction length. Any other means of invoking a task switch VM-exit
@@ -3785,7 +3765,7 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitTaskSwitch(PVMCPU pVCpu, IEMTASKSWITCH enmTa
 
 
 /**
- * VMX VM-exit handler for VM-exits due to expiry of the preemption timer.
+ * VMX VM-exit handler for VM-exits due to expiring of the preemption timer.
  *
  * @returns VBox strict status code.
  * @param   pVCpu           The cross context virtual CPU structure.
@@ -3813,7 +3793,6 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitPreemptTimer(PVMCPU pVCpu)
             VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_VMX_PREEMPT_TIMER);
 
             /* Cause the VMX-preemption timer VM-exit. The VM-exit qualification MBZ. */
-            iemVmxVmcsSetExitQual(pVCpu, 0);
             return iemVmxVmexit(pVCpu, VMX_EXIT_PREEMPT_TIMER);
         }
     }
@@ -3829,7 +3808,7 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitPreemptTimer(PVMCPU pVCpu)
  * @param   pVCpu           The cross context virtual CPU structure.
  * @param   uVector         The external interrupt vector.
  * @param   fIntPending     Whether the external interrupt is pending or
- *                          acknowdledged in the interrupt controller.
+ *                          acknowledged in the interrupt controller.
  */
 IEM_STATIC VBOXSTRICTRC iemVmxVmexitExtInt(PVMCPU pVCpu, uint8_t uVector, bool fIntPending)
 {
@@ -3848,16 +3827,11 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitExtInt(PVMCPU pVCpu, uint8_t uVector, bool f
              * See Intel spec 25.2 "Other Causes Of VM Exits".
              */
             if (!(pVmcs->u32ExitCtls & VMX_EXIT_CTLS_ACK_EXT_INT))
-            {
-                iemVmxVmcsSetExitIntInfo(pVCpu, 0);
-                iemVmxVmcsSetExitIntErrCode(pVCpu, 0);
-                iemVmxVmcsSetExitQual(pVCpu, 0);
                 return iemVmxVmexit(pVCpu, VMX_EXIT_EXT_INT);
-            }
 
             /*
              * If the interrupt is pending and we -do- need to acknowledge the interrupt
-             * on VM-exit, postpone VM-exit til after the interrupt controller has been
+             * on VM-exit, postpone VM-exit till after the interrupt controller has been
              * acknowledged that the interrupt has been consumed.
              */
             return VINF_VMX_INTERCEPT_NOT_ACTIVE;
@@ -3879,8 +3853,6 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitExtInt(PVMCPU pVCpu, uint8_t uVector, bool f
                                           | RT_BF_MAKE(VMX_BF_EXIT_INT_INFO_NMI_UNBLOCK_IRET, fNmiUnblocking)
                                           | RT_BF_MAKE(VMX_BF_EXIT_INT_INFO_VALID,            1);
             iemVmxVmcsSetExitIntInfo(pVCpu, uExitIntInfo);
-            iemVmxVmcsSetExitIntErrCode(pVCpu, 0);
-            iemVmxVmcsSetExitQual(pVCpu, 0);
             return iemVmxVmexit(pVCpu, VMX_EXIT_EXT_INT);
         }
     }
@@ -3911,7 +3883,6 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitStartupIpi(PVMCPU pVCpu, uint8_t uVector)
  */
 IEM_STATIC VBOXSTRICTRC iemVmxVmexitInitIpi(PVMCPU pVCpu)
 {
-    iemVmxVmcsSetExitQual(pVCpu, 0);
     return iemVmxVmexit(pVCpu, VMX_EXIT_INIT_SIGNAL);
 }
 
@@ -3924,7 +3895,6 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitInitIpi(PVMCPU pVCpu)
  */
 IEM_STATIC VBOXSTRICTRC iemVmxVmexitIntWindow(PVMCPU pVCpu)
 {
-    iemVmxVmcsSetExitQual(pVCpu, 0);
     return iemVmxVmexit(pVCpu, VMX_EXIT_INT_WINDOW);
 }
 
@@ -4076,7 +4046,6 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmexitEvent(PVMCPU pVCpu, uint8_t uVector, uint32_
  */
 IEM_STATIC VBOXSTRICTRC iemVmxVmexitTripleFault(PVMCPU pVCpu)
 {
-    iemVmxVmcsSetExitQual(pVCpu, 0);
     return iemVmxVmexit(pVCpu, VMX_EXIT_TRIPLE_FAULT);
 }
 
@@ -4825,7 +4794,6 @@ IEM_STATIC VBOXSTRICTRC iemVmxTprVirtualization(PVMCPU pVCpu)
         if (((uTpr >> 4) & 0xf) < uTprThreshold)
         {
             Log2(("tpr_virt: uTpr=%u uTprThreshold=%u -> VM-exit\n", uTpr, uTprThreshold));
-            iemVmxVmcsSetExitQual(pVCpu, 0);
             return iemVmxVmexit(pVCpu, VMX_EXIT_TPR_BELOW_THRESHOLD);
         }
     }
@@ -7207,6 +7175,50 @@ IEM_STATIC int iemVmxVmentryInjectEvent(PVMCPU pVCpu, const char *pszInstr)
 
 
 /**
+ * Initializes all read-only VMCS fields as part of VM-entry.
+ *
+ * @param   pVCpu       The cross context virtual CPU structure.
+ */
+IEM_STATIC void iemVmxVmentryInitReadOnlyFields(PVMCPU pVCpu)
+{
+    /*
+     * Any VMCS field which we do not establish on every VM-exit but may potentially
+     * be used on the VM-exit path of a nested hypervisor -and- is not explicitly
+     * specified to be undefined needs to be initialized here.
+     *
+     * Thus, it is especially important to clear the VM-exit qualification field
+     * since it must be zero for VM-exits where it is not used. Similarly, the
+     * VM-exit interruption information field's valid bit needs to be cleared for
+     * the same reasons.
+     */
+    PVMXVVMCS pVmcs = pVCpu->cpum.GstCtx.hwvirt.vmx.CTX_SUFF(pVmcs);
+    Assert(pVmcs);
+
+    /* 16-bit (none currently). */
+    /* 32-bit. */
+    pVmcs->u32RoVmInstrError        = 0;
+    pVmcs->u32RoExitReason          = 0;
+    pVmcs->u32RoExitIntInfo         = 0;
+    pVmcs->u32RoExitIntErrCode      = 0;
+    pVmcs->u32RoIdtVectoringInfo    = 0;
+    pVmcs->u32RoIdtVectoringErrCode = 0;
+    pVmcs->u32RoExitInstrLen        = 0;
+    pVmcs->u32RoExitInstrInfo       = 0;
+
+    /* 64-bit. */
+    pVmcs->u64RoGuestPhysAddr.u     = 0;
+
+    /* Natural-width. */
+    pVmcs->u64RoExitQual.u          = 0;
+    pVmcs->u64RoIoRcx.u             = 0;
+    pVmcs->u64RoIoRsi.u             = 0;
+    pVmcs->u64RoIoRdi.u             = 0;
+    pVmcs->u64RoIoRip.u             = 0;
+    pVmcs->u64RoGuestLinearAddr.u   = 0;
+}
+
+
+/**
  * VMLAUNCH/VMRESUME instruction execution worker.
  *
  * @returns Strict VBox status code.
@@ -7317,8 +7329,8 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmlaunchVmresume(PVMCPU pVCpu, uint8_t cbInstr, VM
                 rc = iemVmxVmentryCheckHostState(pVCpu, pszInstr);
                 if (RT_SUCCESS(rc))
                 {
-                    /* Initialize the VM-exit qualification field as it MBZ for VM-exits where it isn't specified. */
-                    iemVmxVmcsSetExitQual(pVCpu, 0);
+                    /* Initialize read-only VMCS fields before VM-entry since we don't update all of them for every VM-exit. */
+                    iemVmxVmentryInitReadOnlyFields(pVCpu);
 
                     /*
                      * Blocking of NMIs need to be restored if VM-entry fails due to invalid-guest state.
@@ -7422,7 +7434,7 @@ IEM_STATIC VBOXSTRICTRC iemVmxVmlaunchVmresume(PVMCPU pVCpu, uint8_t cbInstr, VM
  *
  * @returns @c true if the instruction is intercepted, @c false otherwise.
  * @param   pVCpu           The cross context virtual CPU structure.
- * @param   uExitReason     The VM-exit exit reason (VMX_EXIT_RDMSR or
+ * @param   uExitReason     The VM-exit reason (VMX_EXIT_RDMSR or
  *                          VMX_EXIT_WRMSR).
  * @param   idMsr           The MSR.
  */
@@ -7471,7 +7483,7 @@ IEM_STATIC bool iemVmxIsRdmsrWrmsrInterceptSet(PVMCPU pVCpu, uint32_t uExitReaso
  * @returns @c true if the instruction is intercepted, @c false otherwise.
  * @param   pVCpu           The cross context virtual CPU structure.
  * @param   u64FieldEnc     The VMCS field encoding.
- * @param   uExitReason     The VM-exit exit reason (VMX_EXIT_VMREAD or
+ * @param   uExitReason     The VM-exit reason (VMX_EXIT_VMREAD or
  *                          VMX_EXIT_VMREAD).
  */
 IEM_STATIC bool iemVmxIsVmreadVmwriteInterceptSet(PVMCPU pVCpu, uint32_t uExitReason, uint64_t u64FieldEnc)

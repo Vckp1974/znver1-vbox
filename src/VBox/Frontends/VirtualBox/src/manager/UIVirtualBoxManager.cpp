@@ -1,4 +1,4 @@
-/* $Id: UIVirtualBoxManager.cpp 76815 2019-01-14 13:36:28Z vboxsync $ */
+/* $Id: UIVirtualBoxManager.cpp 76838 2019-01-16 15:04:41Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxManager class implementation.
  */
@@ -1208,6 +1208,9 @@ void UIVirtualBoxManager::prepare()
 #ifdef VBOX_WS_MAC
     /* We have to make sure that we are getting the front most process: */
     ::darwinSetFrontMostProcess();
+    /* Install global event-filter, since vmstarter.app can send us FileOpen events,
+     * see UIVirtualBoxManager::eventFilter for handler implementation. */
+    qApp->installEventFilter(this);
 #endif
 
     /* Cache medium data early if necessary: */
@@ -1239,6 +1242,10 @@ void UIVirtualBoxManager::prepare()
         ::darwinLabelWindow(this, &betaLabel, true);
     }
 #endif /* VBOX_WS_MAC */
+
+    /* If there are unhandled URLs we should handle them after manager is shown: */
+    if (vboxGlobal().argumentUrlsPresent())
+        QMetaObject::invokeMethod(this, "sltHandleOpenUrlCall", Qt::QueuedConnection);
 }
 
 void UIVirtualBoxManager::prepareIcon()

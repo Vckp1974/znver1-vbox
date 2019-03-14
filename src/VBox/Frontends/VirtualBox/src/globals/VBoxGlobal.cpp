@@ -1,4 +1,4 @@
-/* $Id: VBoxGlobal.cpp 76826 2019-01-15 18:19:10Z vboxsync $ */
+/* $Id: VBoxGlobal.cpp 76835 2019-01-16 11:54:21Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBoxGlobal class implementation.
  */
@@ -464,7 +464,7 @@ bool VBoxGlobal::processArgs()
         /* So if the argument file exists, we add it to URL list: */
         if (   !strArg.isEmpty()
             && QFile::exists(strArg))
-            listArgUrls << QUrl::fromLocalFile(strArg);
+            listArgUrls << QUrl::fromLocalFile(QFileInfo(strArg).absoluteFilePath());
     }
 
     /* If there are file URLs: */
@@ -474,7 +474,8 @@ bool VBoxGlobal::processArgs()
         for (int i = 0; i < listArgUrls.size(); ++i)
         {
             /* Check which of them has allowed VM extensions: */
-            const QString &strFile = listArgUrls.at(i).toLocalFile();
+            const QUrl url = listArgUrls.at(i);
+            const QString strFile = url.toLocalFile();
             if (VBoxGlobal::hasAllowedExtension(strFile, VBoxFileExts))
             {
                 /* So that we could run existing VMs: */
@@ -485,7 +486,7 @@ bool VBoxGlobal::processArgs()
                     fResult = true;
                     launchMachine(comMachine);
                     /* And remove their URLs from the ULR list: */
-                    listArgUrls.removeAll(strFile);
+                    listArgUrls.removeAll(url);
                 }
             }
         }
@@ -494,13 +495,16 @@ bool VBoxGlobal::processArgs()
     /* And if there are *still* URLs: */
     if (!listArgUrls.isEmpty())
     {
-        /* We store them: */
+        /* We store them, they will be handled later: */
         m_listArgUrls = listArgUrls;
-        /* And ask UIStarter to open them: */
-        emit sigAskToOpenURLs();
     }
 
     return fResult;
+}
+
+bool VBoxGlobal::argumentUrlsPresent() const
+{
+    return !m_listArgUrls.isEmpty();
 }
 
 QList<QUrl> VBoxGlobal::takeArgumentUrls()
@@ -2729,7 +2733,7 @@ QUuid VBoxGlobal::openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType 
     if (!pSelector)
         return QString();
     windowManager().registerNewParent(pSelector, pDialogParent);
-    if (pSelector->execute(true, false))
+    if (pSelector->exec(false))
     {
         QList<QUuid> selectedMediumIds = pSelector->selectedMediumIds();
         delete pSelector;
@@ -4093,10 +4097,6 @@ void VBoxGlobal::prepare()
             enmOptType = OptType_VMRunner;
             m_enmLaunchRunning = LaunchRunning_Yes;
         }
-#endif
-#ifdef RT_OS_WINDOWS /** @todo add more here, please... */
-        else
-            msgCenter().warnAboutUnknownOptionType(arguments.at(i));
 #endif
         if (enmOptType == OptType_VMRunner && m_enmType != UIType_RuntimeUI)
             msgCenter().warnAboutUnrelatedOptionType(arg);

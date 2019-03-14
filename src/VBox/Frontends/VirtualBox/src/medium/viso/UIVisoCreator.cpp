@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreator.cpp 76826 2019-01-15 18:19:10Z vboxsync $ */
+/* $Id: UIVisoCreator.cpp 76844 2019-01-16 19:37:20Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoCreator class implementation.
  */
@@ -91,7 +91,7 @@ void UIVisoCreator::retranslateUi()
         m_pActionOptions->setStatusTip(tr("Manage Dialog Options"));
     }
     if (m_pMainMenu)
-        m_pMainMenu->setTitle(tr("Main Menu"));
+        m_pMainMenu->setTitle(tr("VISO"));
     if (m_pHostBrowserMenu)
         m_pHostBrowserMenu->setTitle(tr("Host Browser"));
     if (m_pVisoContentBrowserMenu)
@@ -140,23 +140,18 @@ void UIVisoCreator::prepareObjects()
     setCentralWidget(m_pCentralWidget);
 
     m_pMainLayout = new QVBoxLayout;
-        m_pCentralWidget->setLayout(m_pMainLayout);
-    if (!m_pMainLayout)
+    m_pCentralWidget->setLayout(m_pMainLayout);
+    if (!m_pMainLayout || !menuBar())
         return;
 
-    QMenuBar *pMenuBar = new QMenuBar;
+    m_pMainMenu = menuBar()->addMenu(tr("VISO"));
+    if (m_pActionConfiguration)
+        m_pMainMenu->addAction(m_pActionConfiguration);
+    if (m_pActionOptions)
+        m_pMainMenu->addAction(m_pActionOptions);
+    m_pHostBrowserMenu = m_pMainMenu->addMenu(tr("Host Browser"));
+    m_pVisoContentBrowserMenu = m_pMainMenu->addMenu(tr("VISO Browser"));
 
-    setMenuBar(pMenuBar);
-    if (pMenuBar)
-    {
-        m_pMainMenu = pMenuBar->addMenu(tr("Main Menu"));
-        if (m_pActionConfiguration)
-            m_pMainMenu->addAction(m_pActionConfiguration);
-        if (m_pActionOptions)
-            m_pMainMenu->addAction(m_pActionOptions);
-        m_pHostBrowserMenu = m_pMainMenu->addMenu(tr("Host Browser"));
-        m_pVisoContentBrowserMenu = m_pMainMenu->addMenu(tr("VISO Browser"));
-    }
     m_pToolBar = new UIToolBar(parentWidget());
     if (m_pToolBar)
     {
