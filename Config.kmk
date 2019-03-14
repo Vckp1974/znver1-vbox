@@ -1,4 +1,4 @@
-# $Id: Config.kmk 77034 2019-01-29 16:13:27Z vboxsync $
+# $Id: Config.kmk 77055 2019-01-30 17:41:44Z vboxsync $
 ## @file
 # The global build configuration file for VBox.
 #
@@ -4566,12 +4566,12 @@ $$(PATH_TARGET)/tst$(1)$(subst /,_,$(KERN_DIR))_mod.run: \
 	$(QUIET)$$(RM) -Rf   -- "$$(PATH_TARGET)/tst$(1)_mod"
 	$(QUIET)$$(MKDIR) -p -- "$$(PATH_TARGET)/tst$(1)_mod"
 	$(QUIET)$$(CP) -R    -- "$$(PATH_STAGE_BIN)/../$$($(1)_INST)" "$$(PATH_TARGET)/tst$(1)_mod/"
-	+ $(QUIET)make KBUILD_VERBOSE=$(KBUILD_VERBOSE) KERN_DIR=$(KERN_DIR) -C $$(PATH_TARGET)/tst$(1)_mod clean
+	+ $(QUIET)make KBUILD_VERBOSE=$(KBUILD_VERBOSE) KERN_DIR=$(KERN_DIR) VBOX_KERN_QUIET=1 -C $$(PATH_TARGET)/tst$(1)_mod clean
    ifneq ($(2),)
 	$(QUIET)$$(CP) -f    -- "$$<" "$$(PATH_TARGET)/tst$(1)_mod/Module.symvers"
    endif
 	+ $(QUIET)$(REDIRECT_EXT) -d2=1 -w1 "$$(PATH_TARGET)/tst$(1)_mod/make.err" -- \
-		make KBUILD_VERBOSE=$(KBUILD_VERBOSE) KERN_DIR=$(KERN_DIR) $(if-expr $(KMK_OPTS_JOBS) != 0,JOBS=$(KMK_OPTS_JOBS),) -C $$(PATH_TARGET)/tst$(1)_mod
+		make KBUILD_VERBOSE=$(KBUILD_VERBOSE) KERN_DIR=$(KERN_DIR) VBOX_KERN_QUIET=1 $(if-expr $(KMK_OPTS_JOBS) != 0,JOBS=$(KMK_OPTS_JOBS),) -C $$(PATH_TARGET)/tst$(1)_mod
 	$(CAT) "$$(PATH_TARGET)/tst$(1)_mod/make.err"
 	$(QUIET)! grep "^WARNING: .* undefined!$$$$" "$$(PATH_TARGET)/tst$(1)_mod/make.err"
    if1of ($(USERNAME), bird)
@@ -4584,6 +4584,7 @@ $$(PATH_TARGET)/tst$(1)$(subst /,_,$(KERN_DIR))_mod.run: \
    endif
 	$(QUIET)$$(RM) -Rf   -- "$$(PATH_TARGET)/tst$(1)_mod"
 vbox-linux-kmod-test-builds: $$(PATH_TARGET)/tst$(1)$(subst /,_,$(KERN_DIR))_mod.run
+$$(foreach src,$$(notdir $$(filter %.c,$$(subst =>,/,$$($(1)_SOURCES)))),$$(patsubst %.c,%.o,$$(src))): $$(PATH_TARGET)/tst$(1)$(subst /,_,$(KERN_DIR))_mod.run
   endif
  endef # VBOX_LINUX_KMOD_TEST_BUILD_RULE_FN
  else
@@ -7679,7 +7680,7 @@ endif
 SVN                    ?= svn$(HOSTSUFF_EXE)
 VBOX_SVN_REV_KMK        = $(PATH_OUT)/revision.kmk
 ifndef VBOX_SVN_REV
- VBOX_SVN_REV_FALLBACK := $(patsubst %:,,  $Rev: 77034 $  )
+ VBOX_SVN_REV_FALLBACK := $(patsubst %:,,  $Rev: 77055 $  )
  VBOX_SVN_DEP          := $(firstword $(wildcard $(PATH_ROOT)/.svn/wc.db $(abspath $(PATH_ROOT)/../.svn/wc.db) $(abspath $(PATH_ROOT)/../../.svn/wc.db) $(PATH_ROOT)/.svn/entries))
  ifeq ($(which $(SVN)),)
   VBOX_SVN_DEP         :=
@@ -7744,10 +7745,15 @@ else
 endif
 
 # Java compiler options, needs some version checking.
-if defined(VBOX_JAVA_VERSION) && $(VBOX_JAVA_VERSION) >= 10900
+if defined(VBOX_JAVA_VERSION) && $(VBOX_JAVA_VERSION) >= 110000
+ VBOX_JAVA_WS_PATH ?= /usr/share/java
+ VBOX_JAVA_WS_OPTS ?= -classpath $(VBOX_JAVA_WS_PATH)/jws-api.jar:$(VBOX_JAVA_WS_PATH)/jaxb-api.jar:$(VBOX_JAVA_WS_PATH)/jaxws-api.jar
+else if defined(VBOX_JAVA_VERSION) && $(VBOX_JAVA_VERSION) >= 10900
  VBOX_JAVA_WS_OPTS ?= --add-modules java.xml.ws
 endif
-if defined(VBOX_JAVA_VERSION) && $(VBOX_JAVA_VERSION) >= 100000
+if defined(VBOX_JAVA_VERSION) && $(VBOX_JAVA_VERSION) >= 110000
+ VBOX_JAVAC_OPTS   = -encoding UTF-8 -source 9 -target 9 -Xlint:unchecked
+else if defined(VBOX_JAVA_VERSION) && $(VBOX_JAVA_VERSION) >= 100000
  VBOX_JAVAC_OPTS   = -encoding UTF-8 -source 6 -target 6 -Xlint:unchecked
 else
  VBOX_JAVAC_OPTS   = -encoding UTF-8 -source 1.5 -target 1.5 -Xlint:unchecked

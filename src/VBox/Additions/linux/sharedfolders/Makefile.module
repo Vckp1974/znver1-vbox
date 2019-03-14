@@ -1,4 +1,4 @@
-# $Id: Makefile.module 76733 2019-01-09 12:58:33Z vboxsync $
+# $Id: Makefile.module 77057 2019-01-30 18:05:59Z vboxsync $
 ## @file
 # VBox Linux Shared Folders VFS Module Makefile.
 #
@@ -28,9 +28,12 @@ MOD_OBJS   = \
 	lnkops.o \
 	regops.o \
 	utils.o \
+	VBoxGuestR0LibGenericRequest.o \
 	VBoxGuestR0LibHGCM.o \
 	VBoxGuestR0LibIdc.o \
 	VBoxGuestR0LibIdc-unix.o \
+	VBoxGuestR0LibInit.o \
+	VBoxGuestR0LibPhysHeap.o \
 	VBoxGuestR0LibSharedFolders.o
 ifeq ($(BUILD_TARGET_ARCH),x86)
 MOD_OBJS  += \
@@ -53,13 +56,16 @@ else
 endif
 
 MOD_DEFS   = -DRT_OS_LINUX -DIN_RING0 -DIN_RT_R0 \
-	    -DIN_SUP_R0 -DVBOX -DVBOX_WITH_HGCM -DIN_MODULE -DIN_GUEST_R0
+	    -DIN_SUP_R0 -DVBOX -DVBOX_WITH_HGCM -DIN_MODULE -DIN_GUEST -DIN_GUEST_R0
 # our module does not export any symbol
 MOD_DEFS  += -DRT_NO_EXPORT_SYMBOL
 ifeq ($(BUILD_TARGET_ARCH),amd64)
  MOD_DEFS += -DRT_ARCH_AMD64 -DVBOX_WITH_64_BITS_GUESTS
 else
  MOD_DEFS += -DRT_ARCH_X86
+endif
+ifdef VBOXSF_USE_DEPRECATED_VBGL_INTERFACE
+ MOD_DEFS += -DVBOXSF_USE_DEPRECATED_VBGL_INTERFACE
 endif
 
 ifeq ($(KERN_VERSION), 24)
@@ -84,6 +90,9 @@ else
 			echo "$(KERNELRELEASE)"|grep '2.6.18.*cc4.*'),\
 		-DKERNEL_FC6,)
  endif
+endif
+ifdef VBOX_NO_OMIT_FRAME_POINTER
+ MOD_CFLAGS += -fno-omit-frame-pointer
 endif
 
 MOD_CLEAN = . linux r0drv r0drv/linux
