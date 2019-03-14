@@ -1,4 +1,4 @@
-/* $Id: fileio-win.cpp 76902 2019-01-19 14:25:38Z vboxsync $ */
+/* $Id: fileio-win.cpp 77231 2019-02-08 23:18:13Z vboxsync $ */
 /** @file
  * IPRT - File I/O, native implementation for the Windows host platform.
  */
@@ -95,35 +95,49 @@ DECLINLINE(bool) MySetFilePointer(RTFILE hFile, uint64_t offSeek, uint64_t *poff
 
 
 /**
- * This is a helper to check if an attempt was made to grow a file beyond the
- * limit of the filesystem.
- *
- * @returns true for file size limit exceeded.
- * @param   hFile       Filehandle.
- * @param   offSeek     Offset to seek.
- * @param   uMethod     The seek method.
+ * Helper for checking if a VERR_DISK_FULL isn't a VERR_FILE_TOO_BIG.
+ * @returns VERR_DISK_FULL or VERR_FILE_TOO_BIG.
  */
-DECLINLINE(bool) IsBeyondLimit(RTFILE hFile, uint64_t offSeek, unsigned uMethod)
+static int rtFileWinCheckIfDiskReallyFull(RTFILE hFile, uint64_t cbDesired)
 {
-    bool fIsBeyondLimit = false;
-
     /*
-     * Get the current file position and try set the new one.
-     * If it fails with a seek error it's because we hit the file system limit.
+     * Windows doesn't appear to have a way to query the file size limit of a
+     * file system, so we have to deduce the limit from the file system driver name.
+     * This means it will only work for known file systems.
      */
-/** @todo r=bird: I'd be very interested to know on which versions of windows and on which file systems
- * this supposedly works. The fastfat sources in the latest WDK makes no limit checks during
- * file seeking, only at the time of writing (and some other odd ones we cannot make use of). */
-    uint64_t offCurrent;
-    if (MySetFilePointer(hFile, 0, &offCurrent, FILE_CURRENT))
+    if (cbDesired >= _2G - 1)
     {
-        if (!MySetFilePointer(hFile, offSeek, NULL, uMethod))
-            fIsBeyondLimit = GetLastError() == ERROR_SEEK;
-        else /* Restore file pointer on success. */
-            MySetFilePointer(hFile, offCurrent, NULL, FILE_BEGIN);
-    }
+        uint64_t cbMaxFile = UINT64_MAX;
+        RTFSTYPE enmFsType;
+        int rc = rtNtQueryFsType((HANDLE)RTFileToNative(hFile), &enmFsType);
+        if (RT_SUCCESS(rc))
+            switch (enmFsType)
+            {
+                case RTFSTYPE_NTFS:
+                case RTFSTYPE_EXFAT:
+                case RTFSTYPE_UDF:
+                    cbMaxFile = UINT64_C(0xffffffffffffffff); /* (May be limited by IFS.) */
+                    break;
 
-    return fIsBeyondLimit;
+                case RTFSTYPE_ISO9660:
+                    cbMaxFile = 8 *_1T;
+                    break;
+
+                case RTFSTYPE_FAT:
+                    cbMaxFile = _4G;
+                    break;
+
+                case RTFSTYPE_HPFS:
+                    cbMaxFile = _2G;
+                    break;
+
+                default:
+                    break;
+            }
+        if (cbDesired >= cbMaxFile)
+            return VERR_FILE_TOO_BIG;
+    }
+    return VERR_DISK_FULL;
 }
 
 
@@ -495,6 +509,50 @@ RTR3DECL(int)  RTFileRead(RTFILE hFile, void *pvBuf, size_t cbToRead, size_t *pc
 }
 
 
+RTDECL(int)  RTFileReadAt(RTFILE hFile, RTFOFF off, void *pvBuf, size_t cbToRead, size_t *pcbRead)
+{
+    ULONG cbToReadAdj = (ULONG)cbToRead;
+    AssertReturn(cbToReadAdj == cbToRead, VERR_NUMBER_TOO_BIG);
+
+    OVERLAPPED Overlapped;
+    Overlapped.Offset       = (uint32_t)off;
+    Overlapped.OffsetHigh   = (uint32_t)(off >> 32);
+    Overlapped.hEvent       = NULL;
+    Overlapped.Internal     = 0;
+    Overlapped.InternalHigh = 0;
+
+    ULONG cbRead = 0;
+    if (ReadFile((HANDLE)RTFileToNative(hFile), pvBuf, cbToReadAdj, &cbRead, &Overlapped))
+    {
+        if (pcbRead)
+            /* Caller can handle partial reads. */
+            *pcbRead = cbRead;
+        else
+        {
+            /* Caller expects everything to be read. */
+            while (cbToReadAdj > cbRead)
+            {
+                Overlapped.Offset       = (uint32_t)(off + cbRead);
+                Overlapped.OffsetHigh   = (uint32_t)((off + cbRead) >> 32);
+                Overlapped.hEvent       = NULL;
+                Overlapped.Internal     = 0;
+                Overlapped.InternalHigh = 0;
+
+                ULONG cbReadPart = 0;
+                if (!ReadFile((HANDLE)RTFileToNative(hFile), (char *)pvBuf + cbRead, cbToReadAdj - cbRead,
+                              &cbReadPart, &Overlapped))
+                    return RTErrConvertFromWin32(GetLastError());
+                if (cbReadPart == 0)
+                    return VERR_EOF;
+                cbRead += cbReadPart;
+            }
+        }
+        return VINF_SUCCESS;
+    }
+    return RTErrConvertFromWin32(GetLastError());
+}
+
+
 RTR3DECL(int)  RTFileWrite(RTFILE hFile, const void *pvBuf, size_t cbToWrite, size_t *pcbWritten)
 {
     if (cbToWrite <= 0)
@@ -518,10 +576,8 @@ RTR3DECL(int)  RTFileWrite(RTFILE hFile, const void *pvBuf, size_t cbToWrite, si
                                cbToWriteAdj - cbWritten, &cbWrittenPart, NULL))
                 {
                     int rc = RTErrConvertFromWin32(GetLastError());
-                    if (   rc == VERR_DISK_FULL
-                        && IsBeyondLimit(hFile, cbToWriteAdj - cbWritten, FILE_CURRENT)
-                       )
-                        rc = VERR_FILE_TOO_BIG;
+                    if (rc == VERR_DISK_FULL)
+                        rc = rtFileWinCheckIfDiskReallyFull(hFile, RTFileTell(hFile) + cbToWriteAdj - cbWritten);
                     return rc;
                 }
                 if (cbWrittenPart == 0)
@@ -562,9 +618,8 @@ RTR3DECL(int)  RTFileWrite(RTFILE hFile, const void *pvBuf, size_t cbToWrite, si
                     continue;
                 }
                 int rc = RTErrConvertFromWin32(dwErr);
-                if (   rc == VERR_DISK_FULL
-                    && IsBeyondLimit(hFile, cbToWriteAdj - cbWritten, FILE_CURRENT))
-                    rc = VERR_FILE_TOO_BIG;
+                if (rc == VERR_DISK_FULL)
+                    rc = rtFileWinCheckIfDiskReallyFull(hFile, RTFileTell(hFile) + cbToWrite);
                 return rc;
             }
             cbWritten += cbWrittenPart;
@@ -583,9 +638,61 @@ RTR3DECL(int)  RTFileWrite(RTFILE hFile, const void *pvBuf, size_t cbToWrite, si
     }
 
     int rc = RTErrConvertFromWin32(dwErr);
-    if (   rc == VERR_DISK_FULL
-        && IsBeyondLimit(hFile, cbToWriteAdj - cbWritten, FILE_CURRENT))
-        rc = VERR_FILE_TOO_BIG;
+    if (rc == VERR_DISK_FULL)
+        rc = rtFileWinCheckIfDiskReallyFull(hFile, RTFileTell(hFile) + cbToWriteAdj);
+    return rc;
+}
+
+
+RTDECL(int)  RTFileWriteAt(RTFILE hFile, RTFOFF off, const void *pvBuf, size_t cbToWrite, size_t *pcbWritten)
+{
+    ULONG const cbToWriteAdj = (ULONG)cbToWrite;
+    AssertReturn(cbToWriteAdj == cbToWrite, VERR_NUMBER_TOO_BIG);
+
+    OVERLAPPED Overlapped;
+    Overlapped.Offset       = (uint32_t)off;
+    Overlapped.OffsetHigh   = (uint32_t)(off >> 32);
+    Overlapped.hEvent       = NULL;
+    Overlapped.Internal     = 0;
+    Overlapped.InternalHigh = 0;
+
+    ULONG cbWritten = 0;
+    if (WriteFile((HANDLE)RTFileToNative(hFile), pvBuf, cbToWriteAdj, &cbWritten, &Overlapped))
+    {
+        if (pcbWritten)
+            /* Caller can handle partial writes. */
+            *pcbWritten = RT_MIN(cbWritten, cbToWriteAdj); /* paranoia^3 */
+        else
+        {
+            /* Caller expects everything to be written. */
+            while (cbWritten < cbToWriteAdj)
+            {
+                Overlapped.Offset       = (uint32_t)(off + cbWritten);
+                Overlapped.OffsetHigh   = (uint32_t)((off + cbWritten) >> 32);
+                Overlapped.hEvent       = NULL;
+                Overlapped.Internal     = 0;
+                Overlapped.InternalHigh = 0;
+
+                ULONG cbWrittenPart = 0;
+                if (!WriteFile((HANDLE)RTFileToNative(hFile), (char*)pvBuf + cbWritten,
+                               cbToWriteAdj - cbWritten, &cbWrittenPart, &Overlapped))
+                {
+                    int rc = RTErrConvertFromWin32(GetLastError());
+                    if (rc == VERR_DISK_FULL)
+                        rc = rtFileWinCheckIfDiskReallyFull(hFile, off + cbToWriteAdj);
+                    return rc;
+                }
+                if (cbWrittenPart == 0)
+                    return VERR_WRITE_ERROR;
+                cbWritten += cbWrittenPart;
+            }
+        }
+        return VINF_SUCCESS;
+    }
+
+    int rc = RTErrConvertFromWin32(GetLastError());
+    if (rc == VERR_DISK_FULL)
+        rc = rtFileWinCheckIfDiskReallyFull(hFile, off + cbToWriteAdj);
     return rc;
 }
 
@@ -602,7 +709,7 @@ RTR3DECL(int)  RTFileFlush(RTFILE hFile)
 }
 
 
-RTR3DECL(int)  RTFileSetSize(RTFILE hFile, uint64_t cbSize)
+RTR3DECL(int) RTFileSetSize(RTFILE hFile, uint64_t cbSize)
 {
     /*
      * Get current file pointer.
@@ -633,6 +740,9 @@ RTR3DECL(int)  RTFileSetSize(RTFILE hFile, uint64_t cbSize)
              */
             rc = GetLastError();
             MySetFilePointer(hFile, offCurrent, NULL, FILE_BEGIN);
+
+            if (rc == ERROR_DISK_FULL)
+                return rtFileWinCheckIfDiskReallyFull(hFile, cbSize);
         }
         else
             rc = GetLastError();

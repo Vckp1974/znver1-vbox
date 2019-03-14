@@ -1,4 +1,4 @@
-/* $Id: UIChooserItemGroup.cpp 77199 2019-02-07 15:38:32Z vboxsync $ */
+/* $Id: UIChooserItemGroup.cpp 77228 2019-02-08 18:05:46Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserItemGroup class implementation.
  */
@@ -34,6 +34,7 @@
 #include "UIChooserModel.h"
 #include "UIChooserView.h"
 #include "UIGraphicsRotatorButton.h"
+#include "UIGraphicsScrollArea.h"
 #include "UIIconPool.h"
 #include "UIVirtualBoxManager.h"
 
@@ -52,6 +53,7 @@ UIChooserItemGroup::UIChooserItemGroup(QGraphicsScene *pScene)
     , m_pEnterButton(0)
     , m_pExitButton(0)
     , m_pNameEditorWidget(0)
+    , m_pScrollArea(0)
     , m_pContainer(0)
     , m_pLayout(0)
     , m_pLayoutGlobal(0)
@@ -71,8 +73,6 @@ UIChooserItemGroup::UIChooserItemGroup(QGraphicsScene *pScene)
     /* Prepare connections: */
     connect(this, &UIChooserItemGroup::sigMinimumWidthHintChanged,
             model(), &UIChooserModel::sigRootItemMinimumWidthHintChanged);
-    connect(this, &UIChooserItemGroup::sigMinimumHeightHintChanged,
-            model(), &UIChooserModel::sigRootItemMinimumHeightHintChanged);
 }
 
 UIChooserItemGroup::UIChooserItemGroup(QGraphicsScene *pScene,
@@ -88,6 +88,7 @@ UIChooserItemGroup::UIChooserItemGroup(QGraphicsScene *pScene,
     , m_pEnterButton(0)
     , m_pExitButton(0)
     , m_pNameEditorWidget(0)
+    , m_pScrollArea(0)
     , m_pContainer(0)
     , m_pLayout(0)
     , m_pLayoutGlobal(0)
@@ -127,6 +128,7 @@ UIChooserItemGroup::UIChooserItemGroup(UIChooserItem *pParent,
     , m_pEnterButton(0)
     , m_pExitButton(0)
     , m_pNameEditorWidget(0)
+    , m_pScrollArea(0)
     , m_pContainer(0)
     , m_pLayout(0)
     , m_pLayoutGlobal(0)
@@ -159,8 +161,6 @@ UIChooserItemGroup::UIChooserItemGroup(UIChooserItem *pParent,
     /* Prepare connections: */
     connect(this, &UIChooserItemGroup::sigMinimumWidthHintChanged,
             model(), &UIChooserModel::sigRootItemMinimumWidthHintChanged);
-    connect(this, &UIChooserItemGroup::sigMinimumHeightHintChanged,
-            model(), &UIChooserModel::sigRootItemMinimumHeightHintChanged);
 }
 
 UIChooserItemGroup::UIChooserItemGroup(UIChooserItem *pParent,
@@ -176,6 +176,7 @@ UIChooserItemGroup::UIChooserItemGroup(UIChooserItem *pParent,
     , m_pEnterButton(0)
     , m_pExitButton(0)
     , m_pNameEditorWidget(0)
+    , m_pScrollArea(0)
     , m_pContainer(0)
     , m_pLayout(0)
     , m_pLayoutGlobal(0)
@@ -277,10 +278,29 @@ bool UIChooserItemGroup::isOpened() const
     return !m_fClosed || isRoot();
 }
 
+void UIChooserItemGroup::installEventFilterHelper(QObject *pSource)
+{
+    /* The only object which need's that filter for now is scroll-area: */
+    pSource->installEventFilter(m_pScrollArea);
+}
+
 /* static */
 QString UIChooserItemGroup::className()
 {
     return "UIChooserItemGroup";
+}
+
+void UIChooserItemGroup::makeSureItemIsVisible(UIChooserItem *pItem)
+{
+    /* Make sure item exists: */
+    AssertPtrReturnVoid(pItem);
+
+    /* Convert child rectangle to local coordinates for this group. This also
+     * works for a child at any sub-level, doesn't necessary of this group. */
+    const QPointF positionInScene = pItem->mapToScene(QPointF(0, 0));
+    const QPointF positionInGroup = mapFromScene(positionInScene);
+    const QRectF itemRectInGroup = QRectF(positionInGroup, pItem->size());
+    m_pScrollArea->makeSureRectIsVisible(itemRectInGroup);
 }
 
 void UIChooserItemGroup::retranslateUi()
@@ -791,6 +811,9 @@ void UIChooserItemGroup::updateLayout()
     /* Header (root-item): */
     if (isRoot())
     {
+        /* Acquire view: */
+        const QGraphicsView *pView = model()->scene()->views().first();
+
         /* Header (non-main root-item): */
         if (!isMainRoot())
         {
@@ -817,6 +840,12 @@ void UIChooserItemGroup::updateLayout()
             /* Prepare body indent: */
             iPreviousVerticalIndent = iVerticalMargin + iFullHeaderHeight + iVerticalMargin;
         }
+
+        /* Adjust scroll-view geometry: */
+        QSize viewSize = pView->size();
+        viewSize.setHeight(viewSize.height() - iPreviousVerticalIndent);
+        m_pScrollArea->resize(viewSize);
+        m_pScrollArea->setPos(0, iPreviousVerticalIndent);
     }
     /* Header (non-root-item): */
     else
@@ -855,21 +884,21 @@ void UIChooserItemGroup::updateLayout()
 
         /* Prepare body indent: */
         iPreviousVerticalIndent = 2 * iVerticalMargin + iFullHeaderHeight;
-    }
 
-    /* Adjust container geometry: */
-    QSize itemSize = size().toSize();
-    itemSize.setHeight(minimumHeightHint() - iPreviousVerticalIndent);
-    m_pContainer->resize(itemSize);
-    m_pContainer->setPos(0, iPreviousVerticalIndent);
+        /* Adjust scroll-view geometry: */
+        QSize itemSize = size().toSize();
+        itemSize.setHeight(itemSize.height() - iPreviousVerticalIndent);
+        m_pScrollArea->resize(itemSize);
+        m_pScrollArea->setPos(0, iPreviousVerticalIndent);
+    }
 
     /* No body for closed group: */
     if (isClosed())
-        m_pContainer->hide();
+        m_pScrollArea->hide();
     /* Body for opened group: */
     else
     {
-        m_pContainer->show();
+        m_pScrollArea->show();
         foreach (UIChooserItem *pItem, items())
             pItem->updateLayout();
     }
@@ -1256,43 +1285,51 @@ void UIChooserItemGroup::prepare()
     m_enterButtonSize = m_pEnterButton ? m_pEnterButton->minimumSizeHint().toSize() : QSize(0, 0);
     m_exitButtonSize = m_pExitButton ? m_pExitButton->minimumSizeHint().toSize() : QSize(0, 0);
 
-    /* Prepare container: */
-    m_pContainer = new QIGraphicsWidget(this);
-    if (m_pContainer)
+    /* Prepare scroll-area: */
+    m_pScrollArea = new UIGraphicsScrollArea(Qt::Vertical, this);
+    if (m_pScrollArea)
     {
-        /* Prepare layout: */
-        m_pLayout = new QGraphicsLinearLayout(Qt::Vertical, m_pContainer);
-        if (m_pLayout)
+        /* Prepare container: */
+        m_pContainer = new QIGraphicsWidget;
+        if (m_pContainer)
         {
-            m_pLayout->setContentsMargins(0, 0, 0, 0);
-            m_pLayout->setSpacing(0);
-
-            /* Prepare global layout: */
-            m_pLayoutGlobal = new QGraphicsLinearLayout(Qt::Vertical);
-            if (m_pLayoutGlobal)
+            /* Prepare layout: */
+            m_pLayout = new QGraphicsLinearLayout(Qt::Vertical, m_pContainer);
+            if (m_pLayout)
             {
-                m_pLayoutGlobal->setContentsMargins(0, 0, 0, 0);
-                m_pLayoutGlobal->setSpacing(1);
-                m_pLayout->addItem(m_pLayoutGlobal);
+                m_pLayout->setContentsMargins(0, 0, 0, 0);
+                m_pLayout->setSpacing(0);
+
+                /* Prepare global layout: */
+                m_pLayoutGlobal = new QGraphicsLinearLayout(Qt::Vertical);
+                if (m_pLayoutGlobal)
+                {
+                    m_pLayoutGlobal->setContentsMargins(0, 0, 0, 0);
+                    m_pLayoutGlobal->setSpacing(1);
+                    m_pLayout->addItem(m_pLayoutGlobal);
+                }
+
+                /* Prepare group layout: */
+                m_pLayoutGroup = new QGraphicsLinearLayout(Qt::Vertical);
+                if (m_pLayoutGroup)
+                {
+                    m_pLayoutGroup->setContentsMargins(0, 0, 0, 0);
+                    m_pLayoutGroup->setSpacing(1);
+                    m_pLayout->addItem(m_pLayoutGroup);
+                }
+
+                /* Prepare machine layout: */
+                m_pLayoutMachine = new QGraphicsLinearLayout(Qt::Vertical);
+                if (m_pLayoutMachine)
+                {
+                    m_pLayoutMachine->setContentsMargins(0, 0, 0, 0);
+                    m_pLayoutMachine->setSpacing(1);
+                    m_pLayout->addItem(m_pLayoutMachine);
+                }
             }
 
-            /* Prepare group layout: */
-            m_pLayoutGroup = new QGraphicsLinearLayout(Qt::Vertical);
-            if (m_pLayoutGroup)
-            {
-                m_pLayoutGroup->setContentsMargins(0, 0, 0, 0);
-                m_pLayoutGroup->setSpacing(1);
-                m_pLayout->addItem(m_pLayoutGroup);
-            }
-
-            /* Prepare machine layout: */
-            m_pLayoutMachine = new QGraphicsLinearLayout(Qt::Vertical);
-            if (m_pLayoutMachine)
-            {
-                m_pLayoutMachine->setContentsMargins(0, 0, 0, 0);
-                m_pLayoutMachine->setSpacing(1);
-                m_pLayout->addItem(m_pLayoutMachine);
-            }
+            /* Assign to scroll-area: */
+            m_pScrollArea->setViewport(m_pContainer);
         }
     }
 }

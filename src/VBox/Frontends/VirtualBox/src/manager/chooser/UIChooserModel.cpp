@@ -1,4 +1,4 @@
-/* $Id: UIChooserModel.cpp 77061 2019-01-30 18:12:57Z vboxsync $ */
+/* $Id: UIChooserModel.cpp 77228 2019-02-08 18:05:46Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserModel class implementation.
  */
@@ -91,6 +91,10 @@ UIChooserModel::~UIChooserModel()
 
 void UIChooserModel::init()
 {
+    /* Install root as event-filter for scene view,
+     * we need QEvent::Scroll events from it: */
+    root()->installEventFilterHelper(scene()->views()[0]);
+
     /* Load group tree: */
     loadGroupTree();
 
@@ -416,8 +420,9 @@ void UIChooserModel::setFocusItem(UIChooserItem *pItem)
     if (m_pFocusItem)
         connect(m_pFocusItem, SIGNAL(destroyed(QObject*)), this, SLOT(sltFocusItemDestroyed()));
 
-    /* Notify listeners about focus change: */
-    emit sigFocusChanged();
+    /* If dialog is visible and item exists => make it visible as well: */
+    if (scene()->views()[0]->window()->isVisible() && pItem)
+        root()->makeSureItemIsVisible(pItem);
 }
 
 UIChooserItem *UIChooserModel::focusItem() const
@@ -667,7 +672,7 @@ void UIChooserModel::updateLayout()
 
     /* Initialize variables: */
     const int iSceneMargin = data(ChooserModelData_Margin).toInt();
-    const QSize viewportSize = scene()->views()[0]->viewport()->size();
+    const QSize viewportSize = scene()->views()[0]->size();
     const int iViewportWidth = viewportSize.width() - 2 * iSceneMargin;
     const int iViewportHeight = viewportSize.height() - 2 * iSceneMargin;
 

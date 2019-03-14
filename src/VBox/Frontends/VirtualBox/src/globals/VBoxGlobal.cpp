@@ -1,4 +1,4 @@
-/* $Id: VBoxGlobal.cpp 77189 2019-02-06 20:47:57Z vboxsync $ */
+/* $Id: VBoxGlobal.cpp 77217 2019-02-08 13:32:34Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBoxGlobal class implementation.
  */
@@ -2758,7 +2758,7 @@ QUuid VBoxGlobal::showCreateFloppyDiskDialog(QWidget *pParent, const QString &st
 
 int VBoxGlobal::openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType  enmMediumType, QUuid &outUuid,
                                          const QString &strMachineName, const QString &strMachineFolder,
-                                         const QString &strMachineGuestOSTypeId  /* = QString() */)
+                                         const QString &strMachineGuestOSTypeId, bool fEnableCreate)
 {
     QWidget *pDialogParent = windowManager().realParentWindow(pParent);
     QPointer<UIMediumSelector> pSelector = new UIMediumSelector(enmMediumType, strMachineName,
@@ -2766,7 +2766,7 @@ int VBoxGlobal::openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType  e
 
     if (!pSelector)
         return static_cast<int>(UIMediumSelector::ReturnCode_Rejected);
-
+    pSelector->setEnableCreateAction(fEnableCreate);
     windowManager().registerNewParent(pSelector, pDialogParent);
 
     int iResult = pSelector->exec(false);
@@ -2795,7 +2795,7 @@ QUuid VBoxGlobal::createHDWithNewHDWizard(QWidget *pParent, const QString &strMa
                                           const QString &strMachineFolder)
 {
     /* Initialize variables: */
-    const CGuestOSType comGuestOSType = vboxGlobal().virtualBox().GetGuestOSType(strMachineGuestOSTypeId);
+    const CGuestOSType comGuestOSType = virtualBox().GetGuestOSType(strMachineGuestOSTypeId);
     const QFileInfo fileInfo(strMachineFolder);
     /* Show New VD wizard: */
     UISafePointerWizardNewVD pWizard = new UIWizardNewVD(pParent, QString(), fileInfo.absolutePath(), comGuestOSType.GetRecommendedHDD());

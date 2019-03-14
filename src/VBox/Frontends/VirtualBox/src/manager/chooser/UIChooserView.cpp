@@ -1,4 +1,4 @@
-/* $Id: UIChooserView.cpp 76606 2019-01-02 05:40:39Z vboxsync $ */
+/* $Id: UIChooserView.cpp 77228 2019-02-08 18:05:46Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserView class implementation.
  */
@@ -94,25 +94,9 @@ UIChooserView::UIChooserView(UIChooser *pParent)
     : QIWithRetranslateUI<QIGraphicsView>(pParent)
     , m_pChooser(pParent)
     , m_iMinimumWidthHint(0)
-    , m_iMinimumHeightHint(0)
 {
     /* Prepare: */
     prepare();
-}
-
-void UIChooserView::sltFocusChanged()
-{
-    /* Make sure focus-item set: */
-    const UIChooserItem *pFocusItem = chooser() && chooser()->model()
-                                    ? chooser()->model()->focusItem()
-                                    : 0;
-    if (!pFocusItem)
-        return;
-
-    const QSize viewSize = viewport()->size();
-    QRectF geo = pFocusItem->geometry();
-    geo &= QRectF(geo.topLeft(), viewSize);
-    ensureVisible(geo, 0, 0);
 }
 
 void UIChooserView::sltMinimumWidthHintChanged(int iHint)
@@ -126,19 +110,6 @@ void UIChooserView::sltMinimumWidthHintChanged(int iHint)
 
     /* Set minimum view width according passed width-hint: */
     setMinimumWidth(2 * frameWidth() + m_iMinimumWidthHint + verticalScrollBar()->sizeHint().width());
-
-    /* Update scene-rect: */
-    updateSceneRect();
-}
-
-void UIChooserView::sltMinimumHeightHintChanged(int iHint)
-{
-    /* Is there something changed? */
-    if (m_iMinimumHeightHint == iHint)
-        return;
-
-    /* Remember new value: */
-    m_iMinimumHeightHint = iHint;
 
     /* Update scene-rect: */
     updateSceneRect();
@@ -167,6 +138,7 @@ void UIChooserView::prepare()
 
     /* Setup scroll-bars policy: */
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     /* Update scene-rect: */
     updateSceneRect();
@@ -190,9 +162,12 @@ void UIChooserView::resizeEvent(QResizeEvent *pEvent)
     QIWithRetranslateUI<QIGraphicsView>::resizeEvent(pEvent);
     /* Notify listeners: */
     emit sigResized();
+
+    /* Update scene-rect: */
+    updateSceneRect();
 }
 
 void UIChooserView::updateSceneRect()
 {
-    setSceneRect(0, 0, m_iMinimumWidthHint, m_iMinimumHeightHint);
+    setSceneRect(0, 0, m_iMinimumWidthHint, height());
 }

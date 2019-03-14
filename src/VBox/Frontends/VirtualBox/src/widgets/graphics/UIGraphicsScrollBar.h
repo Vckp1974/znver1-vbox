@@ -1,4 +1,4 @@
-/* $Id: UIGraphicsScrollBar.h 77205 2019-02-07 19:04:50Z vboxsync $ */
+/* $Id: UIGraphicsScrollBar.h 77219 2019-02-08 13:53:15Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIGraphicsScrollBar class declaration.
  */
@@ -132,6 +132,9 @@ private:
     /** Layout token. */
     void layoutToken();
 
+    /** Returns actual token position. */
+    QPoint actualTokenPosition() const;
+
     /** Paints background using specified @a pPainter and certain @a rectangle. */
     void paintBackground(QPainter *pPainter, const QRect &rectangle) const;
 
@@ -165,6 +168,8 @@ private:
 
     /** Holds whether item is hovered. */
     bool  m_fHovered;
+    /** Holds the hover-on timer id. */
+    int   m_iHoverOnTimerId;
     /** Holds the hover-off timer id. */
     int   m_iHoverOffTimerId;
     /** Holds the animated value. */

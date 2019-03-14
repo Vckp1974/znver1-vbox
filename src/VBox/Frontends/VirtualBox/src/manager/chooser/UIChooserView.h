@@ -1,4 +1,4 @@
-/* $Id: UIChooserView.h 76581 2019-01-01 06:24:57Z vboxsync $ */
+/* $Id: UIChooserView.h 77228 2019-02-08 18:05:46Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserView class declaration.
  */
@@ -52,18 +52,10 @@ public:
 
 public slots:
 
-    /** @name General stuff.
-      * @{ */
-        /** Handles focus change to @a pFocusItem. */
-        void sltFocusChanged();
-    /** @} */
-
     /** @name Layout stuff.
       * @{ */
         /** Handles minimum width @a iHint change. */
         void sltMinimumWidthHintChanged(int iHint);
-        /** Handles minimum height @a iHint change. */
-        void sltMinimumHeightHintChanged(int iHint);
     /** @} */
 
 protected:
@@ -103,8 +95,6 @@ private:
       * @{ */
         /** Holds the minimum width hint. */
         int m_iMinimumWidthHint;
-        /** Holds the minimum height hint. */
-        int m_iMinimumHeightHint;
     /** @} */
 };
 

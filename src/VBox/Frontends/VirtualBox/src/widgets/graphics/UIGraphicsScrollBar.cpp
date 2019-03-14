@@ -1,4 +1,4 @@
-/* $Id: UIGraphicsScrollBar.cpp 77205 2019-02-07 19:04:50Z vboxsync $ */
+/* $Id: UIGraphicsScrollBar.cpp 77223 2019-02-08 15:20:29Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIGraphicsScrollBar class implementation.
  */
@@ -52,6 +52,9 @@ public:
     /** Returns minimum size-hint. */
     virtual QSizeF minimumSizeHint() const /* override */;
 
+    /** Returns whether token is hovered. */
+    bool isHovered() const { return m_fHovered; }
+
 protected:
 
     /** Performs painting using passed @a pPainter, @a pOptions and optionally specified @a pWidget. */
@@ -62,6 +65,11 @@ protected:
     /** Handles mouse-release @a pEvent. */
     virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *pEvent) /* override */;
 
+    /** Handles hover enter @a pEvent. */
+    virtual void hoverMoveEvent(QGraphicsSceneHoverEvent *pEvent) /* override */;
+    /** Handles hover leave @a pEvent. */
+    virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent *pEvent) /* override */;
+
 private:
 
     /** Prepares all. */
@@ -71,6 +79,9 @@ private:
 
     /** Holds the scroll-bar extent. */
     int  m_iExtent;
+
+    /** Holds whether item is hovered. */
+    bool  m_fHovered;
 };
 
 
@@ -80,6 +91,7 @@ private:
 
 UIGraphicsScrollBarToken::UIGraphicsScrollBarToken(QIGraphicsWidget *pParent /* = 0 */)
     : QIGraphicsWidget(pParent)
+    , m_fHovered(false)
 {
     prepare();
 }
@@ -123,6 +135,18 @@ void UIGraphicsScrollBarToken::mouseMoveEvent(QGraphicsSceneMouseEvent *pEvent)
     emit sigMouseMoved(mapToParent(pEvent->pos()));
 }
 
+void UIGraphicsScrollBarToken::hoverMoveEvent(QGraphicsSceneHoverEvent *)
+{
+    if (!m_fHovered)
+        m_fHovered = true;
+}
+
+void UIGraphicsScrollBarToken::hoverLeaveEvent(QGraphicsSceneHoverEvent *)
+{
+    if (m_fHovered)
+        m_fHovered = false;
+}
+
 void UIGraphicsScrollBarToken::prepare()
 {
     setAcceptHoverEvents(true);
@@ -153,6 +177,7 @@ UIGraphicsScrollBar::UIGraphicsScrollBar(Qt::Orientation enmOrientation, QGraphi
     , m_pButton2(0)
     , m_pToken(0)
     , m_fHovered(false)
+    , m_iHoverOnTimerId(0)
     , m_iHoverOffTimerId(0)
     , m_iAnimatedValue(0)
 {
@@ -172,6 +197,7 @@ UIGraphicsScrollBar::UIGraphicsScrollBar(Qt::Orientation enmOrientation, QIGraph
     , m_pButton2(0)
     , m_pToken(0)
     , m_fHovered(false)
+    , m_iHoverOnTimerId(0)
     , m_iHoverOffTimerId(0)
     , m_iAnimatedValue(0)
 {
@@ -281,7 +307,6 @@ void UIGraphicsScrollBar::mousePressEvent(QGraphicsSceneMouseEvent *pEvent)
 
     /* Redirect to token move handler: */
     sltTokenMoved(pEvent->pos());
-    layoutToken();
 }
 
 void UIGraphicsScrollBar::hoverMoveEvent(QGraphicsSceneHoverEvent *)
@@ -290,9 +315,9 @@ void UIGraphicsScrollBar::hoverMoveEvent(QGraphicsSceneHoverEvent *)
      * make sure trigger emitted just once: */
     if (!m_fHovered)
     {
-        /* Emit hover-on trigger: */
+        /* Start hover-on timer, handled in timerEvent() below: */
+        m_iHoverOnTimerId = startTimer(400);
         m_fHovered = true;
-        emit sigHoverEnter();
     }
     /* Update in any case: */
     update();
@@ -318,13 +343,27 @@ void UIGraphicsScrollBar::timerEvent(QTimerEvent *pEvent)
     const int iTimerId = pEvent->timerId();
     killTimer(iTimerId);
 
-    /* If that timer is the one we expecting: */
+    /* If that is hover-on timer: */
+    if (m_iHoverOnTimerId != 0 && iTimerId == m_iHoverOnTimerId)
+    {
+        /* Wait for timer no more: */
+        m_iHoverOnTimerId = 0;
+        /* Emit hover-on trigger if hovered: */
+        if (m_fHovered)
+            emit sigHoverEnter();
+        /* Update in any case: */
+        update();
+    }
+
+    else
+
+    /* If that is hover-off timer: */
     if (m_iHoverOffTimerId != 0 && iTimerId == m_iHoverOffTimerId)
     {
         /* Wait for timer no more: */
         m_iHoverOffTimerId = 0;
         /* Emit hover-off trigger if not hovered: */
-        if (!m_fHovered)
+        if (!m_fHovered && !m_pToken->isHovered())
             emit sigHoverLeave();
         /* Update in any case: */
         update();
@@ -349,32 +388,26 @@ void UIGraphicsScrollBar::sltTokenMoved(const QPointF &pos)
     {
         case Qt::Horizontal:
         {
-            /* We have to adjust the X coord of the token, leaving Y unchanged: */
-            int iX = pos.x();
+            /* We have to calculate the X coord of the token, leaving Y untouched: */
             const int iMin = m_iExtent;
             const int iMax = size().width() - 2 * m_iExtent;
-            if (iX < iMin)
-                iX = iMin;
-            if (iX > iMax)
-                iX = iMax;
-            /* We also calculating new ratio to update value same way: */
-            dRatio = (double)(iX - iMin) / (iMax - iMin);
-            m_pToken->setPos(iX, 0);
+            int iX = pos.x() - m_iExtent / 2;
+            iX = qMax(iX, iMin);
+            iX = qMin(iX, iMax);
+            /* And then calculate new ratio to update value finally: */
+            dRatio = iMax > iMin ? (double)(iX - iMin) / (iMax - iMin) : 0;
             break;
         }
         case Qt::Vertical:
         {
-            /* We have to adjust the Y coord of the token, leaving X unchanged: */
-            int iY = pos.y();
+            /* We have to calculate the Y coord of the token, leaving X untouched: */
             const int iMin = m_iExtent;
             const int iMax = size().height() - 2 * m_iExtent;
-            if (iY < iMin)
-                iY = iMin;
-            if (iY > iMax)
-                iY = iMax;
-            /* We also calculating new ratio to update value same way: */
-            dRatio = (double)(iY - iMin) / (iMax - iMin);
-            m_pToken->setPos(0, iY);
+            int iY = pos.y() - m_iExtent / 2;
+            iY = qMax(iY, iMin);
+            iY = qMin(iY, iMax);
+            /* And then calculate new ratio to update value finally: */
+            dRatio = iMax > iMin ? (double)(iY - iMin) / (iMax - iMin) : 0;
             break;
         }
     }
@@ -382,6 +415,7 @@ void UIGraphicsScrollBar::sltTokenMoved(const QPointF &pos)
     /* Update value according to calculated ratio: */
     m_iValue = dRatio * (m_iMaximum - m_iMinimum) + m_iMinimum;
     emit sigValueChanged(m_iValue);
+    layoutToken();
 }
 
 void UIGraphicsScrollBar::sltStateLeftDefault()
@@ -578,8 +612,16 @@ void UIGraphicsScrollBar::layoutButtons()
 
 void UIGraphicsScrollBar::layoutToken()
 {
+    m_pToken->setPos(actualTokenPosition());
+}
+
+QPoint UIGraphicsScrollBar::actualTokenPosition() const
+{
     /* We calculating ratio on the basis of current/minimum/maximum values: */
     const double dRatio = m_iMaximum > m_iMinimum ? (double)(m_iValue - m_iMinimum) / (m_iMaximum - m_iMinimum) : 0;
+
+    /* Prepare result: */
+    QPoint position;
 
     /* Depending on orientation: */
     switch (m_enmOrientation)
@@ -590,7 +632,7 @@ void UIGraphicsScrollBar::layoutToken()
             const int iMin = m_iExtent;
             const int iMax = size().width() - 2 * m_iExtent;
             int iX = dRatio * (iMax - iMin) + iMin;
-            m_pToken->setPos(iX, 0);
+            position = QPoint(iX, 0);
             break;
         }
         case Qt::Vertical:
@@ -599,10 +641,13 @@ void UIGraphicsScrollBar::layoutToken()
             const int iMin = m_iExtent;
             const int iMax = size().height() - 2 * m_iExtent;
             int iY = dRatio * (iMax - iMin) + iMin;
-            m_pToken->setPos(0, iY);
+            position = QPoint(0, iY);
             break;
         }
     }
+
+    /* Return result: */
+    return position;
 }
 
 void UIGraphicsScrollBar::paintBackground(QPainter *pPainter, const QRect &rectangle) const
@@ -612,13 +657,23 @@ void UIGraphicsScrollBar::paintBackground(QPainter *pPainter, const QRect &recta
 
     /* Prepare color: */
     const QPalette pal = palette();
-    QColor backgroundColor = pal.color(QPalette::Active, QPalette::Mid);
-    backgroundColor.setAlpha(200);
 
     /* Draw background: */
+    QColor backgroundColor = pal.color(QPalette::Active, QPalette::Mid);
+    backgroundColor.setAlpha(200);
     QRect actualRectangle = rectangle;
-    actualRectangle.setLeft(actualRectangle.left() + .8 * actualRectangle.width() * ((double)100 - m_iAnimatedValue) / 100);
+    actualRectangle.setLeft(actualRectangle.left() + .9 * actualRectangle.width() * ((double)100 - m_iAnimatedValue) / 100);
     pPainter->fillRect(actualRectangle, backgroundColor);
+
+    /* Emulate token when necessary: */
+    if (m_iAnimatedValue < 100)
+    {
+        QColor tokenColor = pal.color(QPalette::Active, QPalette::Window);
+        tokenColor.setAlpha(200);
+        QRect tokenRectangle = QRect(actualTokenPosition(), QSize(m_iExtent, m_iExtent));
+        tokenRectangle.setLeft(tokenRectangle.left() + .9 * tokenRectangle.width() * ((double)100 - m_iAnimatedValue) / 100);
+        pPainter->fillRect(tokenRectangle, tokenColor);
+    }
 
     /* Restore painter: */
     pPainter->restore();
