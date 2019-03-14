@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: ProgressProxyImpl.cpp 76592 2019-01-01 20:13:07Z vboxsync $ */
 /** @file
  * IProgress implementation for Machine::openRemoteSession in VBoxSVC.
  */

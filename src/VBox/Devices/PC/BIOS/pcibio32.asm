@@ -1,4 +1,4 @@
-; $Id$
+; $Id: pcibio32.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BIOS32 service directory and 32-bit PCI BIOS entry point
 ;

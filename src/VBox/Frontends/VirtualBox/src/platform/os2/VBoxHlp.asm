@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxHlp.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; VBox Qt GUI - Implementation of OS/2-specific helpers that require to reside in a DLL.
 ;

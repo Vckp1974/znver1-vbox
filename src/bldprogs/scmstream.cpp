@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: scmstream.cpp 76663 2019-01-07 01:00:44Z vboxsync $ */
 /** @file
  * IPRT Testcase / Tool - Source Code Massager Stream Code.
  */

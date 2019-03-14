@@ -1,4 +1,4 @@
-# $Id$
+# $Id: Makefile.kmk 75542 2018-11-17 03:56:04Z vboxsync $
 ## @file
 # Makefile for the OS/2 Guest Additions Shared Folder FSD.
 #

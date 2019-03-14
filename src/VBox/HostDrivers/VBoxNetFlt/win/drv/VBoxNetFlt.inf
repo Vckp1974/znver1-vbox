@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxNetFlt.inf 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; VBoxNetFlt.inf - VirtualBox Bridged Networking Driver inf file Protocol edge
 ;

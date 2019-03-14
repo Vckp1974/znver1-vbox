@@ -56,7 +56,7 @@ You may elect to license modified versions of this file under the
 terms and conditions of either the GPL or the CDDL or both.
 """
 
-__version__ = "$Revision$";
+__version__ = "$Revision: 60463 $";
 
 
 

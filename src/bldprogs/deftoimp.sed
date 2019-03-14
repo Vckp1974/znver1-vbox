@@ -1,4 +1,4 @@
-# $Id$
+# $Id: deftoimp.sed 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # SED script for generating a dummy .c from a windows .def file.
 #

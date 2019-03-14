@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: kernel_cpp.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * Kernel C++, Haiku private.
  */

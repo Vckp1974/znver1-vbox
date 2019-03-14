@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vfsmod.h 76745 2019-01-09 16:30:17Z vboxsync $ */
 /** @file
  * vboxsf - Linux Shared Folders VFS, internal header.
  */

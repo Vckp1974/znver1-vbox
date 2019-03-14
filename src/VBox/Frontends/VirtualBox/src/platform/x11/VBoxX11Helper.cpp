@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxX11Helper.cpp 76600 2019-01-02 02:05:40Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBox X11 helper functions.
  */

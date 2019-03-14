@@ -1,4 +1,4 @@
-; $Id$
+; $Id: crypt32.def 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Definitions for CRYPT32.DLL lazy import library.
 ;

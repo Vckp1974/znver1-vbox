@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: RTMpOn-r0drv-generic.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Multiprocessor, Ring-0 Driver, Generic Stubs.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vbox_mode.c 76698 2019-01-08 09:53:32Z vboxsync $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */

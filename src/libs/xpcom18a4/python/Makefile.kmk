@@ -1,4 +1,4 @@
-# $Id$
+# $Id: Makefile.kmk 70577 2018-01-13 18:43:03Z vboxsync $
 ## @file
 # Sub-Makefile for Python bindings
 #

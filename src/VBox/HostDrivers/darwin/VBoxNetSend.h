@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxNetSend.h 76568 2019-01-01 04:34:11Z vboxsync $ */
 /** @file
  * A place to share code and definitions between VBoxNetAdp and VBoxNetFlt host drivers.
  */

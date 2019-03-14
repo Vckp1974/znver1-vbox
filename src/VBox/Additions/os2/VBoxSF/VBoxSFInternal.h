@@ -1,4 +1,4 @@
-/** $Id$ */
+/** $Id: VBoxSFInternal.h 76716 2019-01-08 23:36:02Z vboxsync $ */
 /** @file
  * VBoxSF - OS/2 Shared Folder IFS, Internal Header.
  */

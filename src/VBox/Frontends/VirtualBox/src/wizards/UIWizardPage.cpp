@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIWizardPage.cpp 76606 2019-01-02 05:40:39Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIWizardPage class implementation.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: lock.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * Lock.h - Haiku, private locking internals.
  */

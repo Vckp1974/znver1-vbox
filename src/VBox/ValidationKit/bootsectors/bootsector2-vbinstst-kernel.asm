@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-vbinstst-kernel.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; bootsector #2 kernel for big instruction testcases.
 ;   VBoxManage setextradata bs-vbinstst-64-1 VBoxInternal/Devices/VMMDev/0/Config/TestingEnabled  1

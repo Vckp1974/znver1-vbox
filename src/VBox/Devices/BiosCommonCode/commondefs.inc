@@ -1,4 +1,4 @@
-; $Id$
+; $Id: commondefs.inc 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Stuff for drawing the BIOS logo.
 ;

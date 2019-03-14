@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: winutils.h 76576 2019-01-01 06:05:25Z vboxsync $ */
 /** @file
  * NAT Network - winsock compatibility shim.
  */

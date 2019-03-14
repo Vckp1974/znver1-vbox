@@ -1,7 +1,7 @@
 #! /bin/sh
-# $Id$
+# $Id: vboxadd.sh 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
-# Linux Additions kernel module init script ($Revision$)
+# Linux Additions kernel module init script ($Revision: 76553 $)
 #
 
 #

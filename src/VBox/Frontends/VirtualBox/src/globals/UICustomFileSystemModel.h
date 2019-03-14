@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UICustomFileSystemModel.h 76750 2019-01-09 21:48:49Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UICustomFileSystemModel class declaration.
  */

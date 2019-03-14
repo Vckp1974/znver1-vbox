@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VISO.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VISO - Virtual ISO disk image, Core Code.
  */

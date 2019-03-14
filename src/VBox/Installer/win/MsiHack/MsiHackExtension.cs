@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: MsiHackExtension.cs 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * MsiHackExtension - Wix Extension that loads MsiHack.dll
  */

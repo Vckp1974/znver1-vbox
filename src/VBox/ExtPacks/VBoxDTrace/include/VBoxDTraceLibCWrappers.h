@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxDTraceLibCWrappers.h 76567 2019-01-01 04:28:21Z vboxsync $ */
 /** @file
  * VBoxDTraceTLibCWrappers.h - IPRT wrappers/fake for lib C stuff.
  *

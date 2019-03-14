@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: pdmpcidevint.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * DevPCI - PDM PCI Internal header - Only for hiding bits of PDMPCIDEV.
  */

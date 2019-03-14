@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DynLoadLibSolaris.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Dynamically load libraries for Solaris hosts.
  */

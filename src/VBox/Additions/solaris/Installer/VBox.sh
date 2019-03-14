@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: VBox.sh 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # VirtualBox startup script for Solaris Guests Additions
 #

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: display_window_rootvr.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 
 /** @file
  * Presenter API: CrFbDisplayWindowRootVr class implementation -- display seamless content (visible regions).

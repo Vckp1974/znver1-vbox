@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bs3-first-rm.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BS3Kit - First Object, calling real-mode main().
 ;

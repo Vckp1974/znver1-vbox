@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxSmcUtil-darwin.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxSmcUtil - Quick hack for viewing SMC data on a mac.
  */

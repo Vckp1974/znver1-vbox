@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: SUPR0IdcClient-os2.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualBox Support Driver - IDC Client Lib, OS/2 Specific Code.
  */

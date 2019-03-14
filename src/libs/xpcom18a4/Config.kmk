@@ -1,4 +1,4 @@
-# $Id$
+# $Id: Config.kmk 74279 2018-09-14 18:20:05Z vboxsync $
 ## @file
 # XPCOM kBuild Configuration file.
 #

@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: Uninstall.tool 76553 2019-01-01 01:45:53Z vboxsync $
 ## #file
 # VirtualBox Guest Additions uninstall script.
 #

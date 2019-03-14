@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bs3-wc32-U8LS.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BS3Kit - 32-bit Watcom C/C++, 64-bit integer left shift.
 ;

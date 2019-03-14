@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: display_vrdp.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 
 /** @file
  * Presenter API: CrFbDisplayVrdp class implementation -- display content over VRDP.

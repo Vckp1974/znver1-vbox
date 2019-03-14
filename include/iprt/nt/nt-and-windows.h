@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: nt-and-windows.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * IPRT - Header for code using both NT native and Windows APIs.
  */

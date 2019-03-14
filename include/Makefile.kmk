@@ -1,4 +1,4 @@
-# $Id$
+# $Id: Makefile.kmk 76719 2019-01-09 02:48:21Z vboxsync $
 ## @file
 # Some hacks to allow syntax and prerequisite include checking of headers.
 # This makefile doesn't and shouldn't build successfully.

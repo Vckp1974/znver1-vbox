@@ -1,4 +1,4 @@
-# $Id$
+# $Id: SUPR0-def-pe.sed 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # IPRT - SED script for generating SUPR0.def
 #

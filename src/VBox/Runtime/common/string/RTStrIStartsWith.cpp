@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: RTStrIStartsWith.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - String starts with predicate, case insensitive.
  */

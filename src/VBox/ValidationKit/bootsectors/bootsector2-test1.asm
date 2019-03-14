@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-test1.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Bootsector that benchmarks I/O and MMIO roundtrip time.
 ;   VBoxManage setextradata bs-test1 VBoxInternal/Devices/VMMDev/0/Config/TestingEnabled  1

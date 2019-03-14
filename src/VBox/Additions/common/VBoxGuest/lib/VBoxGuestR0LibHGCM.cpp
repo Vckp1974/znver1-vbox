@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxGuestR0LibHGCM.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxGuestLib - Host-Guest Communication Manager, ring-0 client drivers.
  *

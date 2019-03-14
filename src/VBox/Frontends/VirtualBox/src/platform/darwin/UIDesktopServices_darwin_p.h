@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIDesktopServices_darwin_p.h 76581 2019-01-01 06:24:57Z vboxsync $ */
 /** @file
  * VBox Qt GUI - Qt GUI - Utility Classes and Functions specific to darwin..
  */

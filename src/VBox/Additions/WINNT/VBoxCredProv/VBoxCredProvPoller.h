@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxCredProvPoller.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxCredPoller - Thread for retrieving user credentials.
  */

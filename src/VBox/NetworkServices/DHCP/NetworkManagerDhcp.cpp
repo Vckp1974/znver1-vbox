@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: NetworkManagerDhcp.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * NetworkManagerDhcp - Network Manager part handling Dhcp.
  */

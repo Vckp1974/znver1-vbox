@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Intel_Core_i7_3960X.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * CPU database entry "Intel Core i7-3960X".
  * Generated at 2013-12-12T15:29:11Z by VBoxCpuReport v4.3.53r91237 on win.amd64.

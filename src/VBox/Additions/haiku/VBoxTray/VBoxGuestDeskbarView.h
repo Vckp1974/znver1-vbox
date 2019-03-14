@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxGuestDeskbarView.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxGuestDeskbarView, Haiku Guest Additions, header.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: fsw_hfs.h 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * fsw_hfs.h - HFS file system driver header.
  */

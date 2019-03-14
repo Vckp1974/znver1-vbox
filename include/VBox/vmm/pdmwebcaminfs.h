@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: pdmwebcaminfs.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * webcaminfs - interfaces between dev and driver.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxSF-VfsOps.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxFS - Darwin Shared Folders, Virtual File System Operations.
  */

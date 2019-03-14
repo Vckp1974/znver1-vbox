@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: asn1-ut-octetstring-template.h 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - ASN.1, Octet String Type, Collection Type Template.
  */

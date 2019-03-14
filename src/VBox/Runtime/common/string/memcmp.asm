@@ -1,4 +1,4 @@
-; $Id$
+; $Id: memcmp.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - No-CRT memcmp - AMD64 & X86.
 ;

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: GuestCtrlImplPrivate.h 76562 2019-01-01 03:22:50Z vboxsync $ */
 /** @file
  * Internal helpers/structures for guest control functionality.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: RTTraceLogTool.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Utility for reading/receiving and dissecting trace logs.
  */
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
                          , RTPathFilename(argv[0]));
                 return RTEXITCODE_SUCCESS;
             case 'V':
-                RTPrintf("$Revision$\n");
+                RTPrintf("$Revision: 76553 $\n");
                 return RTEXITCODE_SUCCESS;
 
             case 'i':

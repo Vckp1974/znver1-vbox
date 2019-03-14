@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VMMGuruMeditation.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VMM - The Virtual Machine Monitor, Guru Meditation Code.
  */

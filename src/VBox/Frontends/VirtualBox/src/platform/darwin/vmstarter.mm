@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vmstarter.mm 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBox Qt GUI -  Helper application for starting vbox the right way when the user double clicks on a file type association.
  */

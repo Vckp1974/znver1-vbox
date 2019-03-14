@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DrvAudioCommon.cpp 76679 2019-01-07 13:50:26Z vboxsync $ */
 /** @file
  * Intermedia audio driver, common routines.
  *

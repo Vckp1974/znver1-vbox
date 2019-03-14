@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIToolPaneGlobal.cpp 76771 2019-01-11 12:51:50Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIToolPaneGlobal class implementation.
  */

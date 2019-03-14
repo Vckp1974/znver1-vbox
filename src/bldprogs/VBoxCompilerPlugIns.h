@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxCompilerPlugIns.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * VBoxCompilerPlugIns - Types, Prototypes and Macros common to the VBox compiler plug-ins.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIVisoCreatorOptionsDialog.cpp 76747 2019-01-09 16:42:42Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoCreatorOptionsDialog class implementation.
  */

@@ -1,4 +1,4 @@
-# $Id$
+# $Id: VirtualBox.tmpl.spec 76759 2019-01-10 16:39:06Z vboxsync $
 ## @file
 # Spec file for creating VirtualBox rpm packages
 #

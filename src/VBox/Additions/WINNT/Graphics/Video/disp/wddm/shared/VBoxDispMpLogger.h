@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxDispMpLogger.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBox WDDM Display backdoor logger API
  */

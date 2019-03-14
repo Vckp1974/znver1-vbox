@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxPrintGuid.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxPrintGuid.c - Implementation of the VBoxPrintGuid() debug logging routine.
  */

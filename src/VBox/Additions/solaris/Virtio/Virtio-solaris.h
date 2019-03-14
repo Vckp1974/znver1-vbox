@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Virtio-solaris.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VirtualBox Guest Additions: Virtio Driver for Solaris, header.
  */

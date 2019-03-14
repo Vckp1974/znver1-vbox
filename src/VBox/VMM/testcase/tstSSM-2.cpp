@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstSSM-2.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Saved State Manager Testcase: Extract the content of a saved state.
  */

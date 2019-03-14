@@ -1,4 +1,4 @@
-; $Id$
+; $Id: ASMBitLastSetU16.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BiosCommonCode - ASMBitLastSetU16() - borrowed from IPRT.
 ;

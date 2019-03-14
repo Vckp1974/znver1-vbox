@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VDPlugin.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VD - Virtual disk container implementation, plugin related bits.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UartCore.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * UartCore - UART  (16550A up to 16950) emulation.
  *

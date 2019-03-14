@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: wddm_screen.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VirtualBox Windows Guest Mesa3D - VMSVGA hardware driver.
  */

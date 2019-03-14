@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxRT-openssl-1.1plus.def 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - Windows OpenSSL exports we use outside VBoxRT (keep them few!).
 ;

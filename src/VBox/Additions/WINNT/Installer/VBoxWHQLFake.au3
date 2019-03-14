@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxWHQLFake.au3 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; VBoxFakeWHQL - Turns off / on the WHQL for installing unsigned drivers.
 ; Currently only tested with Win2K / XP!

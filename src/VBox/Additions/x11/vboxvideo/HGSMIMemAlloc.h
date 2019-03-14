@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: HGSMIMemAlloc.h 76558 2019-01-01 02:51:45Z vboxsync $ */
 /*
  * Copyright (C) 2017-2019 Oracle Corporation
  *

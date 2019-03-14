@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: USBIdDatabaseStub.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * USB device vendor and product ID database - stub.
  */

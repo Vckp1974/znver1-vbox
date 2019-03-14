@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vbsf.h 76570 2019-01-01 04:36:36Z vboxsync $ */
 /** @file
  * VBox Shared Folders header.
  */

@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bs3-cmn-TestDoModesByOneHlp.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BS3Kit - Bs3TestDoModesByOne Helpers for switching to the bit-count of the worker function.
 ;

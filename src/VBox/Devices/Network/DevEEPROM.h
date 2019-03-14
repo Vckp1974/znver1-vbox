@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DevEEPROM.h 76767 2019-01-11 10:13:14Z vboxsync $ */
 /** @file
  * DevEEPROM - Microwire-compatible 64x16-bit 93C46 EEPROM Emulation, Header.
  */

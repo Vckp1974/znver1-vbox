@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DrvHostDSound.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Windows host backend driver using DirectSound.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: WinKeyboard.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBox Qt GUI - Declarations of utility functions for handling Windows Keyboard specific tasks.
  */

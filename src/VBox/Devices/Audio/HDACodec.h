@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: HDACodec.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * HDACodec - VBox HD Audio Codec.
  */

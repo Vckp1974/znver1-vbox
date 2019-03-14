@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id$
+# $Id: VirtualBox_Uninstall.tool 76612 2019-01-02 15:51:09Z vboxsync $
 ## @file
 # VirtualBox Uninstaller Script.
 #

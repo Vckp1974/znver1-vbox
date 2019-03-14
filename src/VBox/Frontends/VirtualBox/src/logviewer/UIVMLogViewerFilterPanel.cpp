@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIVMLogViewerFilterPanel.cpp 76607 2019-01-02 05:41:14Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVMLogViewer class implementation.
  */

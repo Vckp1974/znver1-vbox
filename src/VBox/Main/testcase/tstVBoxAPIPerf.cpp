@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstVBoxAPIPerf.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * tstVBoxAPIPerf - Checks the performance of the COM / XPOM API.
  */

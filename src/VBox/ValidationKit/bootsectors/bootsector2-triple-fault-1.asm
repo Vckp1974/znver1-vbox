@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-triple-fault-1.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Bootsector for testing triple faults.
 ;

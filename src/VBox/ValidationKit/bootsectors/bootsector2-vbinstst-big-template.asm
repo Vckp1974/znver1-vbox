@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-vbinstst-big-template.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Boot Sector 2 with big instruction test image template.  For use with
 ; bootsector2-vbinstst-kernel.asm.  Requires:

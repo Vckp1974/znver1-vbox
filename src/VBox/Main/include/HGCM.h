@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: HGCM.h 76562 2019-01-01 03:22:50Z vboxsync $ */
 /** @file
  * HGCM - Host-Guest Communication Manager.
  */

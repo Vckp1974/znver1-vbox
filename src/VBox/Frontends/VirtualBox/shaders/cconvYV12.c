@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: cconvYV12.c 71027 2018-02-15 14:33:48Z vboxsync $ */
 #extension GL_ARB_texture_rectangle : enable
 uniform sampler2DRect uSrcTex;
 uniform sampler2DRect uVTex;

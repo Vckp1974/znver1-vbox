@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxCAPI.rc 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxCAPI - Resource file containing version info.
  */

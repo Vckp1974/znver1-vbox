@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: proxy_pollmgr.h 76576 2019-01-01 06:05:25Z vboxsync $ */
 /** @file
  * NAT Network - poll manager, definitions and declarations.
  */

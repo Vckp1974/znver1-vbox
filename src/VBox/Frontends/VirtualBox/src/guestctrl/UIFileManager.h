@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIFileManager.h 76734 2019-01-09 13:08:55Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIFileManager class declaration.
  */

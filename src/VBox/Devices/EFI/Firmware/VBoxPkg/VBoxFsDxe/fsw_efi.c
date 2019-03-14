@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: fsw_efi.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * fsw_efi.c - EFI host environment code.
  */

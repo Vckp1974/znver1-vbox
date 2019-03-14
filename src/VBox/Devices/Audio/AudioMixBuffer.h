@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: AudioMixBuffer.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * Audio Mixing bufer convert audio samples to/from different rates / formats.
  */

@@ -1,4 +1,4 @@
-# $Id$
+# $Id: expando.py 63942 2016-09-22 11:01:17Z vboxsync $
 # This script generates calls for display list compilation
 # and state management.
 import sys

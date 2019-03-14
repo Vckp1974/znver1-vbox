@@ -22,7 +22,7 @@ You may elect to license modified versions of this file under the
 terms and conditions of either the GPL or the CDDL or both.
 """
 
-__version__ = "$Id$"
+__version__ = "$Id: td-dummy.py 76553 2019-01-01 01:45:53Z vboxsync $"
 
 import sys
 sys.path.insert(0, "../");

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxVideoIPRT.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * VirtualBox Video driver, common code - iprt and VirtualBox macros and definitions.
  */

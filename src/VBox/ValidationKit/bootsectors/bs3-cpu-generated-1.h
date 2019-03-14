@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: bs3-cpu-generated-1.h 76579 2019-01-01 06:14:44Z vboxsync $ */
 /** @file
  * BS3Kit - bs3-cpu-generated-1, common header file.
  */

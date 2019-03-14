@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxGuestR3LibAutoLogon.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxGuestR3LibAutoLogon - Ring-3 utility functions for auto-logon modules
  *                           (VBoxGINA / VBoxCredProv / pam_vbox).

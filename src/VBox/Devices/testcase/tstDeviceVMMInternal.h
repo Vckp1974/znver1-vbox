@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstDeviceVMMInternal.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * tstDevice - Test framework for PDM devices/drivers, definitions of VMM internal types.
  */

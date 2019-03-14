@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bs3-mode-SwitchToPE32_16.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BS3Kit - Bs3SwitchToPE32_16
 ;

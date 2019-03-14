@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vcc100-kernel32-fakes.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Tricks to make the Visual C++ 2010 CRT work on NT4, W2K and XP.
  */

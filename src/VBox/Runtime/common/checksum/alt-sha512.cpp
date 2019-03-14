@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: alt-sha512.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - SHA-512 and SHA-384 hash functions, Alternative Implementation.
  */

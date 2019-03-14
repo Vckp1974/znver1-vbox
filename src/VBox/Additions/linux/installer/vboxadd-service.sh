@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: vboxadd-service.sh 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # Linux Additions Guest Additions service daemon init script.
 #

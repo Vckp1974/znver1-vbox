@@ -1,4 +1,4 @@
-; $Id$
+; $Id: vcc100-kernel32-fakesA.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - Wrappers for kernel32 APIs missing in NT4 and earlier.
 ;

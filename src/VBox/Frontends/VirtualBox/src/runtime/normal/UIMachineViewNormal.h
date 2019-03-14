@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIMachineViewNormal.h 76581 2019-01-01 06:24:57Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIMachineViewNormal class declaration.
  */

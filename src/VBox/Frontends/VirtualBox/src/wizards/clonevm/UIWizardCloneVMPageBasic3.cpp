@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIWizardCloneVMPageBasic3.cpp 76606 2019-01-02 05:40:39Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIWizardCloneVMPageBasic3 class implementation.
  */

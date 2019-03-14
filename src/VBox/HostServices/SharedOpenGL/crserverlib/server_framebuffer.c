@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: server_framebuffer.c 76793 2019-01-13 20:53:58Z vboxsync $ */
 /** @file
  * VBox OpenGL: EXT_framebuffer_object
  */

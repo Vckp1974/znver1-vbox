@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxGuestLibSharedFoldersInline.h 76720 2019-01-09 02:55:20Z vboxsync $ */
 /** @file
  * VBoxGuestLib - Shared Folders Host Request Helpers (ring-0).
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: TokenImpl.cpp 76592 2019-01-01 20:13:07Z vboxsync $ */
 /** @file
  * Token COM class implementation - MachineToken and MediumLockToken
  */

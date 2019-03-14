@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxVideoLog.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBox Video drivers, logging helper
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: MouseImpl.cpp 76760 2019-01-10 18:07:47Z vboxsync $ */
 /** @file
  * VirtualBox COM class implementation
  */

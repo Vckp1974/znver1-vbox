@@ -1,4 +1,4 @@
-/** $Id$ */
+/** $Id: dotseg.cpp 75337 2018-11-09 01:39:01Z vboxsync $ */
 /** @file
  * VBoxSF - OS/2 Shared Folders, NASM Object File Editor for DWARF segments.
  */

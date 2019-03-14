@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Recording.h 76760 2019-01-10 18:07:47Z vboxsync $ */
 /** @file
  * Recording code header.
  */

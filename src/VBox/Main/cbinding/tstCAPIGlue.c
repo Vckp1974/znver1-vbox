@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstCAPIGlue.c 76557 2019-01-01 02:37:24Z vboxsync $ */
 /** @file tstCAPIGlue.c
  * Demonstrator program to illustrate use of C bindings of Main API.
  *

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: precomp_gcc.h 76598 2019-01-02 00:59:08Z vboxsync $ */
 /** @file
  * VirtualBox COM - GNU C++ precompiled header for VBoxSVC.
  */

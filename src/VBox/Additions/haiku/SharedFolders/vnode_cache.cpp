@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vnode_cache.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Shared folders - Haiku Guest Additions, vnode cache header.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DrvAudio.cpp 76778 2019-01-11 14:15:04Z vboxsync $ */
 /** @file
  * Intermediate audio driver header.
  *

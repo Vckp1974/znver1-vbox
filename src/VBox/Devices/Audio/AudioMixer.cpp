@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: AudioMixer.cpp 76777 2019-01-11 13:53:44Z vboxsync $ */
 /** @file
  * Audio mixing routines for multiplexing audio sources in device emulations.
  *

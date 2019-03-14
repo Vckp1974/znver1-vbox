@@ -1,4 +1,4 @@
-; $Id$
+; $Id: ws2_32.def 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Definitions for WS2_32.DLL lazy import library.
 ;

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: MsiHack.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * MsiHack - Exterimental DLL that intercept small ReadFile calls from
  *           MSI, CABINET and WINTEROP, buffering them using memory mapped files.

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VMMR0TripleFaultHack.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VMM - Host Context Ring 0, Triple Fault Debugging Hack.
  *

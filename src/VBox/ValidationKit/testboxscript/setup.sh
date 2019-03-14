@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# $Id$
+# $Id: setup.sh 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # VirtualBox Validation Kit - TestBoxScript Service Setup on Unixy platforms.
 #
@@ -605,7 +605,7 @@ do
             exit 0;
             ;;
         -V|--version)
-            echo '$Revision$'
+            echo '$Revision: 76553 $'
             exit 0;
             ;;
 

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: EventQueue.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * MS COM / XPCOM Abstraction Layer - Event queue class declaration.
  */

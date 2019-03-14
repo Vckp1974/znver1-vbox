@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tsp-asn1-decoder.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Crypto - Time-Stamp Protocol (RFC-3161), Decoder for ASN.1.
  */

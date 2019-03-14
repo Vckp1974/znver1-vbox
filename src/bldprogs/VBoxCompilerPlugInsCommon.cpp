@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxCompilerPlugInsCommon.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxCompilerPlugInsCommon - Code common to the compiler plug-ins.
  */

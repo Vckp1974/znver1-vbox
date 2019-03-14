@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vbox-libhal.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  *
  * Module to dynamically load libhal and libdbus and load all symbols

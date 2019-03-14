@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: QIWithRetranslateUI.h 76818 2019-01-14 16:17:07Z vboxsync $ */
 /** @file
  * VBox Qt GUI - Qt extensions: QIWithRetranslateUI class declaration.
  */

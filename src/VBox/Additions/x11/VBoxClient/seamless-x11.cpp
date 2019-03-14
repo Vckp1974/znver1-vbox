@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: seamless-x11.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * X11 Seamless mode.
  */

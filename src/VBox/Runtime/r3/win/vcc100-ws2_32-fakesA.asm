@@ -1,4 +1,4 @@
-; $Id$
+; $Id: vcc100-ws2_32-fakesA.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - Wrappers for ws2_32 APIs misisng NT4.
 ;

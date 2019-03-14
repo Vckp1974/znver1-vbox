@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: display-svga.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * X11 guest client - VMSVGA emulation resize event pass-through to drm guest
  * driver.

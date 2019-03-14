@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: getmode.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualBox X11 Additions graphics driver dynamic video mode functions.
  */

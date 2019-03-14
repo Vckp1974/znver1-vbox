@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Helper.h 76582 2019-01-01 06:25:48Z vboxsync $ */
 /** @file
  *
  * VBox frontends: VBoxSDL (simple frontend based on SDL):

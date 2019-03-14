@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Intel_Pentium_M_processor_2_00GHz.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * CPU database entry "Intel Pentium M processor 2.00GHz".
  * Generated at 2013-12-09T14:18:00Z by VBoxCpuReport v4.3.51r91027 on win.x86.

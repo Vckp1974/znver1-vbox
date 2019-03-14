@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# $Id$
+# $Id: x11config15.pl 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # Guest Additions X11 config update script for X.org 1.5
 #

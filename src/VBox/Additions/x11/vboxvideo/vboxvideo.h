@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vboxvideo.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VirtualBox X11 Additions graphics driver
  */

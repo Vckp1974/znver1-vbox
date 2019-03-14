@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: dndmanager.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Drag and Drop manager: Handling of DnD messages on the host side.
  */

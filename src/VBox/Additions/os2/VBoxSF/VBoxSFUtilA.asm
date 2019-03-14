@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxSFUtilA.asm 75337 2018-11-09 01:39:01Z vboxsync $
 ;; @file
 ; VBoxSF - OS/2 Shared Folders Utility, Assembly code for calling 16-bit APIs.
 ;

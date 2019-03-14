@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstRTPrfIO.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT Testcase - Profile IPRT I/O APIs.
  */
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
                 break;
 
             case 'V':
-                RTTestPrintf(g_hTest, RTTESTLVL_ALWAYS, "$Revision$\n");
+                RTTestPrintf(g_hTest, RTTESTLVL_ALWAYS, "$Revision: 76553 $\n");
                 return RTTestSummaryAndDestroy(g_hTest);
 
             case 'h':

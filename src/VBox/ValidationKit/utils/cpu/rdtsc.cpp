@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: rdtsc.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * rdtsc - Test if three consecutive rdtsc instructions return different values.
  */

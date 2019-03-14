@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxVideo_common.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxVideo, Haiku Guest Additions, common header.
  */

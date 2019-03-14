@@ -1,4 +1,4 @@
--- $Id$
+-- $Id: tmdb-r05-teststatus-3.pgsql 76553 2019-01-01 01:45:53Z vboxsync $
 --- @file
 -- VBox Test Manager Database - Adds 'rebooted' to TestStatus_T.
 --

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: xfs.h 76644 2019-01-04 22:19:24Z vboxsync $ */
 /** @file
  * IPRT, XFS format.
  */

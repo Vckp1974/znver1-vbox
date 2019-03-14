@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIDnDEnumFormat_win.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBox Qt GUI -  UIDnDEnumFormat class implementation. This class implements the
  * IEnumFORMATETC ("Format et cetera") interface.

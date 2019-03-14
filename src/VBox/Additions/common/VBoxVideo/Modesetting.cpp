@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Modesetting.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualBox Video driver, common code - HGSMI initialisation and helper
  * functions.

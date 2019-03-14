@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: PATMRC.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * PATM - Dynamic Guest OS Patching Manager - Raw-mode Context.
  */

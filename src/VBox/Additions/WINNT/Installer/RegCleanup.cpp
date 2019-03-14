@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: RegCleanup.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * delinvalid - remove "InvalidDisplay" key on NT4
  */

@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxGuestAdditionsExternal.nsh 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; VBoxGuestAdditionExternal.nsh - Utility function for invoking external applications.
 ;

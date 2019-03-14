@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DevHDACommon.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * DevHDACommon.h - Shared HDA device defines / functions.
  */

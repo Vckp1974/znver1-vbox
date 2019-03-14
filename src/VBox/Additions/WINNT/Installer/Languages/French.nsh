@@ -1,4 +1,4 @@
-; $Id$
+; $Id: French.nsh 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; NLS for French language.
 ;

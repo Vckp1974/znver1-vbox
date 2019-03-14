@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxBugReport.h 76582 2019-01-01 06:25:48Z vboxsync $ */
 /** @file
  * VBoxBugReport - VirtualBox command-line diagnostics tool, internal header file.
  */

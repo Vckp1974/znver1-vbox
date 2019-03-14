@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: PciInline.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * PCI - The PCI Controller And Devices, inline device helpers.
  */

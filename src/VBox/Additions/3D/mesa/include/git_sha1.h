@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: git_sha1.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * Provides this include file for Mesa.
  *

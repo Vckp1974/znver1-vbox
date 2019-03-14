@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxNetAdpCtl.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Apps - VBoxAdpCtl, Configuration tool for vboxnetX adapters.
  */

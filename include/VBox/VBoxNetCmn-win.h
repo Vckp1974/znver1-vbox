@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxNetCmn-win.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * VBoxNetCmn-win.h - NDIS6 Networking Driver Common Definitions, Windows-specific code.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: time-1.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Query the time and check that it always goes forward, POSIX only.
  */

@@ -1,4 +1,4 @@
-; $Id$
+; $Id: HMR0A.asm 76678 2019-01-07 13:48:16Z vboxsync $
 ;; @file
 ; HM - Ring-0 VMX, SVM world-switch and helper routines
 ;

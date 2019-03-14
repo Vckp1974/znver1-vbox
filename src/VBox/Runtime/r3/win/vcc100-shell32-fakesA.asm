@@ -1,4 +1,4 @@
-; $Id$
+; $Id: vcc100-shell32-fakesA.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - Wrappers for shell32 APIs missing in NT 4 and earlier.
 ;

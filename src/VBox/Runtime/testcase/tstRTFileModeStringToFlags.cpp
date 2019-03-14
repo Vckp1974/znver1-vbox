@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstRTFileModeStringToFlags.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT Testcase - File mode string to IPRT file mode flags.
  */

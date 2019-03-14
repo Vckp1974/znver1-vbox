@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIDnDDataObject_win.h 76581 2019-01-01 06:24:57Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIDnDDataObject class declaration.
  */

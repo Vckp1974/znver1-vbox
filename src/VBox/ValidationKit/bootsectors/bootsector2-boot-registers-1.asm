@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-boot-registers-1.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Bootsector that prints the register status at boot.
 ;

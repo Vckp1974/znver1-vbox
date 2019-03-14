@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: mtlist.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * MS COM / XPCOM Abstraction Layer - Thread-safe list classes declaration.
  */

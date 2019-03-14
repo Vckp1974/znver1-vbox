@@ -1,4 +1,4 @@
-/* $Id$*/
+/* $Id: precomp_gcc.h 76602 2019-01-02 04:03:13Z vboxsync $*/
 /** @file
  * VBox Qt GUI - Precompiled header for Visual C++.
  */

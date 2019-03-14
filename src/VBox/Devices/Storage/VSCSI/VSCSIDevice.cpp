@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VSCSIDevice.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Virtual SCSI driver: Device handling
  */

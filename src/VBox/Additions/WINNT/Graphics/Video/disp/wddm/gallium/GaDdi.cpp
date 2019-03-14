@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: GaDdi.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * WDDM D3DDDI callbacks implemented for the Gallium based driver.
  */

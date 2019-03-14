@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: SUPLib-win.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualBox Support Library - Windows NT specific parts.
  */

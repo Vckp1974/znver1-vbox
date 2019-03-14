@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: modulestub-r0drv-solaris.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Ring-0 Solaris stubs
  */

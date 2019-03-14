@@ -1,4 +1,4 @@
-/* $Id$ $Revision$ */
+/* $Id: vboximgCrypto.cpp 76553 2019-01-01 01:45:53Z vboxsync $ $Revision: 76553 $ */
 
 /** @file
  * vboximgCypto.cpp - Disk Image Flattening FUSE Program.

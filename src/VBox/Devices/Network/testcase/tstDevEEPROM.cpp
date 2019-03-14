@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstDevEEPROM.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * EEPROM 93C46 unit tests.
  */

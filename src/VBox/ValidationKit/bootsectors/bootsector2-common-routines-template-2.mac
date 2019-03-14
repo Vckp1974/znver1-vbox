@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-common-routines-template-2.mac 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; bootsector2 common routines - template containing code specific to each mode.
 ;

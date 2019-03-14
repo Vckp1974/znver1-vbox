@@ -1,4 +1,4 @@
-; $Id$
+; $Id: vcc100-ntdll-fakesA.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - Wrappers for ntdll APIs misisng NT4.
 ;

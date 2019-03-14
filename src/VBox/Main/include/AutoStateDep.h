@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: AutoStateDep.h 76562 2019-01-01 03:22:50Z vboxsync $ */
 
 #ifndef MAIN_INCLUDED_AutoStateDep_h
 #define MAIN_INCLUDED_AutoStateDep_h

@@ -1,4 +1,4 @@
-# $Id$
+# $Id: Makefile.kmk 76713 2019-01-08 16:41:40Z vboxsync $
 ## @file
 # Sub-Makefile for the VirtualBox User Manual, SDK reference and other manuals.
 #

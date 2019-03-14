@@ -1,4 +1,4 @@
-# $Id$
+# $Id: Makefile.include.footer 76712 2019-01-08 16:15:38Z vboxsync $
 ## @file
 # VirtualBox Guest Additions kernel module Makefile, common parts.
 #

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxHostVersion.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxHostVersion - Checks the host's VirtualBox version and notifies
  *                   the user in case of an update.

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: biossums.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Tool for modifying a BIOS image to write the BIOS checksum.
  */

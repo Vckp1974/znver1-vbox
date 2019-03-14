@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: GuestDnDSourceImpl.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBox Console COM Class implementation - Guest drag and drop source.
  */

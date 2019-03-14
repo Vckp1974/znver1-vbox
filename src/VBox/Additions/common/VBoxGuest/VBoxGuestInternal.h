@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxGuestInternal.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxGuest - Guest Additions Driver, Internal Header.
  */

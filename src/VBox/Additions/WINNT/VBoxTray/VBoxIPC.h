@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxIPC.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxIPC - IPC thread, acts as a (purely) local IPC server.
  *           Multiple sessions are supported, whereas every session

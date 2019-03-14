@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: RTLogWriteStdOut-r0drv-netbsd.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Log To StdOut, Ring-0 Driver, NetBSD.
  */

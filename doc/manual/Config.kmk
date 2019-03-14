@@ -1,4 +1,4 @@
-# $Id$
+# $Id: Config.kmk 76786 2019-01-11 19:39:06Z vboxsync $
 ## @file
 # kBuild Configuration file for the manual.
 #

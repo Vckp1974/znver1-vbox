@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Intel_Core_i7_2635QM.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * CPU database entry "Intel Core i7-2635QM".
  * Generated at 2014-02-28T18:53:09Z by VBoxCpuReport v4.3.53r92586 on darwin.amd64.

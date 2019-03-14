@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: key-internal.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * IPRT - Crypto - Cryptographic Keys, Internal Header.
  */

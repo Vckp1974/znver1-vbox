@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxServiceToolBox.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxService - Toolbox header for sharing defines between toolbox binary and VBoxService.
  */

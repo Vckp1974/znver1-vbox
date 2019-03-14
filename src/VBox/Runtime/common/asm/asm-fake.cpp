@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: asm-fake.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Fake asm.h routines for use early in a new port.
  */

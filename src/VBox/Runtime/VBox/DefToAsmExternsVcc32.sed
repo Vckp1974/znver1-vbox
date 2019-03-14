@@ -1,4 +1,4 @@
-# $Id$
+# $Id: DefToAsmExternsVcc32.sed 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # SED script for generating assembly externs from a VBoxRT windows .def file.
 #

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIFileManagerOptionsPanel.cpp 76627 2019-01-03 21:28:51Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVMLogViewer class implementation.
  */

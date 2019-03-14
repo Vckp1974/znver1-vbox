@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UsbTest.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * UsbTest - User frontend for the Linux usbtest USB test and benchmarking module.
  *           Integrates with our test framework for nice outputs.

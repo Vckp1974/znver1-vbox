@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxDispIf.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxTray - Display Settings Interface abstraction for XPDM & WDDM
  */

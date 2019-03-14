@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: ConsoleImpl2.cpp 76711 2019-01-08 16:14:36Z vboxsync $ */
 /** @file
  * VBox Console COM Class implementation - VM Configuration Bits.
  *

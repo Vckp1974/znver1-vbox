@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxGuestR0LibSharedFolders.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxGuestR0LibSharedFolders - Ring 0 Shared Folders calls.
  */

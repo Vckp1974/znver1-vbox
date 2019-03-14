@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxNetAdp-win.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxNetAdp-win.cpp - NDIS6 Host-only Networking Driver, Windows-specific code.
  */

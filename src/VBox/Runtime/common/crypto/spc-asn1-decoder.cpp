@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: spc-asn1-decoder.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Crypto - Microsoft SPC / Authenticode, Decoder for ASN.1.
  */

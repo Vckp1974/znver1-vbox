@@ -1,5 +1,5 @@
 @echo off
-rem $Id$
+rem $Id: win_postinstall.cmd 76553 2019-01-01 01:45:53Z vboxsync $
 rem rem @file
 rem Post installation script template for Windows.
 rem

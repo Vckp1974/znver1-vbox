@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: main.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualBox Guest Additions - X11 Client.
  */

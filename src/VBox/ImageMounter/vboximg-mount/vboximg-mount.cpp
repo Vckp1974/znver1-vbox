@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vboximg-mount.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * vboximg-mount - Disk Image Flattening FUSE Program.
  */

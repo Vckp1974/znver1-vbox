@@ -1,4 +1,4 @@
-; $Id$
+; $Id: tstAsmLock-2.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Disassembly testcase - Invalid invariants.
 ;

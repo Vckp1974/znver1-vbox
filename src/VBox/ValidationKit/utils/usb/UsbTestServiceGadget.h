@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UsbTestServiceGadget.h 76579 2019-01-01 06:14:44Z vboxsync $ */
 /** @file
  * UsbTestServ - Remote USB test configuration and execution server, Gadget API.
  */

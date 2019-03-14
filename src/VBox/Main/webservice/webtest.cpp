@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: webtest.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * webtest.cpp:
  *      demo webservice client in C++. This mimics some of the

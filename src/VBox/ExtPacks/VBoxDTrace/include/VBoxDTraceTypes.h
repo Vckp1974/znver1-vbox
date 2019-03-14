@@ -1,5 +1,5 @@
 
-/* $Id$ */
+/* $Id: VBoxDTraceTypes.h 76567 2019-01-01 04:28:21Z vboxsync $ */
 /** @file
  * VBoxDTraceTypes.h - Fake a bunch of Solaris types.
  *

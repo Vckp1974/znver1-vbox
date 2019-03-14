@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: GuestDnDPrivate.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Private guest drag and drop code, used by GuestDnDTarget + GuestDnDSource.
  */

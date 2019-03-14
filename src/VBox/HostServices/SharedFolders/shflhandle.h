@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: shflhandle.h 76570 2019-01-01 04:36:36Z vboxsync $ */
 /** @file
  * Shared Folders Host Service - Handles helper functions header.
  */

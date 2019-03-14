@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: GIMHvInternal.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * GIM - Hyper-V, Internal header file.
  */

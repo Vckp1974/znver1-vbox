@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: dhcp6.h 76576 2019-01-01 06:05:25Z vboxsync $ */
 /** @file
  * NAT Network - DHCPv6 protocol definitions.
  */

@@ -1,5 +1,5 @@
 
-/* $Id$ $Revision$ $Date$ $Author$ */
+/* $Id: vboximgOpts.h 76585 2019-01-01 06:31:29Z vboxsync $ $Revision: 76585 $ $Date: 2018-12-31 23:31:29 -0700 (Mon, 31 Dec 2018) $ $Author: vboxsync $ */
 
 /** @file
  * vboximgOpts.h

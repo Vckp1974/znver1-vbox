@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-first.mac 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; bootsector2 first include file - works around YASM / kBuild issues.
 ;

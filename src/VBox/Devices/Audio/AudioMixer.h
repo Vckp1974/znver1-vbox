@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: AudioMixer.h 76777 2019-01-11 13:53:44Z vboxsync $ */
 /** @file
  * VBox audio - Mixing routines.
  *

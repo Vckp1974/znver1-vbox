@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id$
+# $Id: clienttest.pl 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # This little perl program attempts to connect to a running VirtualBox
 # webservice and calls various methods on it. Please refer to the SDK

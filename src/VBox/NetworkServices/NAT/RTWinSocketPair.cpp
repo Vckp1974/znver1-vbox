@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: RTWinSocketPair.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * NAT Network - socketpair(2) emulation for winsock.
  */

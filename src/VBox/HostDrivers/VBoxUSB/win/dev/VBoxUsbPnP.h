@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxUsbPnP.h 76568 2019-01-01 04:34:11Z vboxsync $ */
 /** @file
  * USB PnP Handling
  */

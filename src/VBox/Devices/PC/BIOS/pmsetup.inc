@@ -1,4 +1,4 @@
-; $Id$
+; $Id: pmsetup.inc 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Initial system setup which needs to run in protected mode.
 ;

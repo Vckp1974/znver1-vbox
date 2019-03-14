@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: HDAStreamMap.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * HDAStreamMap.h - Stream map functions for HD Audio.
  */

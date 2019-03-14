@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxServiceControl.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxServiceControl.h - Internal guest control definitions.
  */

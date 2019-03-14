@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxHlp.h 76581 2019-01-01 06:24:57Z vboxsync $ */
 /** @file
  * VBox Qt GUI - Declaration of OS/2-specific helpers that require to reside in a DLL.
  */

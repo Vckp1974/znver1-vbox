@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxGuestR0LibIdc-os2.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxGuestLib - Ring-0 Support Library for VBoxGuest, IDC, OS/2 specific.
  */

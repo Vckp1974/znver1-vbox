@@ -1,4 +1,4 @@
-# $Id$
+# $Id: biosorg_check.sed 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # For converting biosorg_check_<addr> lines in a wlink mapfile
 # to kmk_expr checks.

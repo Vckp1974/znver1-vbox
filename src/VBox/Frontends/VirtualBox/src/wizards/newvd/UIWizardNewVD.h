@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIWizardNewVD.h 76581 2019-01-01 06:24:57Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIWizardNewVD class declaration.
  */

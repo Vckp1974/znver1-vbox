@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: MachineImpl.h 76678 2019-01-07 13:48:16Z vboxsync $ */
 /** @file
  * Implementation of IMachine in VBoxSVC - Header.
  */

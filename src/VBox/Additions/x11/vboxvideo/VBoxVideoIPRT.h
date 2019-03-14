@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxVideoIPRT.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /*
  * Copyright (C) 2017-2019 Oracle Corporation
  *

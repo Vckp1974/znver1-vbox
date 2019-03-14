@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxMouseFilter.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxMouse; input_server filter - Haiku Guest Additions, header.
  */

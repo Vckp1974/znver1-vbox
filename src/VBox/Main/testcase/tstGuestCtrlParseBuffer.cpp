@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstGuestCtrlParseBuffer.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Output stream parsing test cases.
  */

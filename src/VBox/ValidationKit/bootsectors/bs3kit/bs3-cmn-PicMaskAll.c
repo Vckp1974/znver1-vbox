@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: bs3-cmn-PicMaskAll.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * BS3Kit - Masks all IRQs on the PIC.
  */

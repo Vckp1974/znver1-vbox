@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: dnsproxy.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 
 /*
  * Copyright (C) 2009-2019 Oracle Corporation

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: swab.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  *
  * VBox storage devices:

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: TestExecService.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * TestExecServ - Basic Remote Execution Service.
  */
@@ -3421,7 +3421,7 @@ static RTEXITCODE txsParseArgv(int argc, char **argv, bool *pfExit)
                 break;
 
             case 'V':
-                RTPrintf("$Revision$\n");
+                RTPrintf("$Revision: 76553 $\n");
                 *pfExit = true;
                 return RTEXITCODE_SUCCESS;
 

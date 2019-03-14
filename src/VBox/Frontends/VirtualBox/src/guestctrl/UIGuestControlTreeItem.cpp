@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIGuestControlTreeItem.cpp 76606 2019-01-02 05:40:39Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIGuestSessionTreeItem class implementation.
  */

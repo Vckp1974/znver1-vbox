@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bs3-c64-Trap64Generic.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BS3Kit - Trap, 64-bit assembly handlers.
 ;

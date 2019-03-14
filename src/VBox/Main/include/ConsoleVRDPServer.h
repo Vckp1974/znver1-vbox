@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: ConsoleVRDPServer.h 76562 2019-01-01 03:22:50Z vboxsync $ */
 /** @file
  * VBox Console VRDE Server Helper class and implementation of IVRDEServerInfo
  */

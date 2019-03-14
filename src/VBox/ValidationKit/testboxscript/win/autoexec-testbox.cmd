@@ -1,5 +1,5 @@
 @echo off
-REM $Id$
+REM $Id: autoexec-testbox.cmd 76553 2019-01-01 01:45:53Z vboxsync $
 REM REM @file
 REM VirtualBox Validation Kit - testbox script, automatic execution wrapper.
 REM
@@ -25,7 +25,7 @@ REM You may elect to license modified versions of this file under the
 REM terms and conditions of either the GPL or the CDDL or both.
 REM
 
-@echo "$Id$"
+@echo "$Id: autoexec-testbox.cmd 76553 2019-01-01 01:45:53Z vboxsync $"
 @echo on
 setlocal EnableExtensions
 set exe=python.exe

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIVirtualBoxManager.h 76815 2019-01-14 13:36:28Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVirtualBoxManager class declaration.
  */

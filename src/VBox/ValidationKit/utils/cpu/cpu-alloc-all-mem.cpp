@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: cpu-alloc-all-mem.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Allocate all memory we can get and then quit.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIWizardImportAppPageBasic2.cpp 76606 2019-01-02 05:40:39Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIWizardImportAppPageBasic2 class implementation.
  */

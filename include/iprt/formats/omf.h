@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: omf.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * IPRT - Relocatable Object Module Format (OMF).
  *

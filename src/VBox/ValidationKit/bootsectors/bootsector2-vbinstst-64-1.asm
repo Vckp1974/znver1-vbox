@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-vbinstst-64-1.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Bootsector tests instructions in 64-bit mode.
 ;   VBoxManage setextradata bs-vbinstst-64-1 VBoxInternal/Devices/VMMDev/0/Config/TestingEnabled  1

@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxGuestAdditionsCommon.nsh 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; VBoxGuestAdditionsCommon.nsh - Common / shared utility functions.
 ;

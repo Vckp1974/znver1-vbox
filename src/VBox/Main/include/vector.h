@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vector.h 76562 2019-01-01 03:22:50Z vboxsync $ */
 /** @file
  * STL-inspired vector implementation in C
  * @note  functions in this file are inline to prevent warnings about

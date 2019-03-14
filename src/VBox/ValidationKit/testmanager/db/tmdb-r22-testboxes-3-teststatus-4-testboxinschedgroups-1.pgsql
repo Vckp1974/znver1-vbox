@@ -1,4 +1,4 @@
--- $Id$
+-- $Id: tmdb-r22-testboxes-3-teststatus-4-testboxinschedgroups-1.pgsql 76553 2019-01-01 01:45:53Z vboxsync $
 --- @file
 -- VBox Test Manager Database - Turns idSchedGroup column in TestBoxes
 -- into an N:M relationship with a priority via the new table

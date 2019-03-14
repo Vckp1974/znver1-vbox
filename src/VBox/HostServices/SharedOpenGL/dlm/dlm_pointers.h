@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: dlm_pointers.h 65381 2017-01-20 09:23:53Z vboxsync $ */
 #include <VBoxUhgsmi.h>
 
 #include "cr_dlm.h"

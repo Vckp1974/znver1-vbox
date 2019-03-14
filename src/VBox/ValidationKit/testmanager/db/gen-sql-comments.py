@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# $Id$
+# $Id: gen-sql-comments.py 76553 2019-01-01 01:45:53Z vboxsync $
 
 """
 Converts doxygen style comments in SQL script to COMMENT ON statements.

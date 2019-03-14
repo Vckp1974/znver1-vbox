@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bs3-cmn-A20Disable.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BS3Kit - Bs3A20Disable.
 ;

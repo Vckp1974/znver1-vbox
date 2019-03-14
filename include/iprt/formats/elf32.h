@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: elf32.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * IPRT - ELF 32-bit header.
  */

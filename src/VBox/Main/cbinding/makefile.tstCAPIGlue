@@ -1,4 +1,4 @@
-# $Id$
+# $Id: makefile.tstCAPIGlue 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file makefile.tstCAPIGlue
 # Makefile for sample program illustrating use of C binding for COM/XPCOM.
 #

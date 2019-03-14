@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxGuestAdditionsNT4.nsh 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; VBoxGuestAdditionsNT4.nsh - Guest Additions installation for NT4.
 ;

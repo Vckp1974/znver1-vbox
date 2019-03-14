@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vbsf.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Shared Folders - VBox Shared Folders.
  */

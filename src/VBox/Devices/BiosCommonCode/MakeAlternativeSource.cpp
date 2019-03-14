@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: MakeAlternativeSource.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * MakeAlternative - Generate an Alternative BIOS Source that requires less tools.
  */
@@ -197,7 +197,7 @@ static bool disError(const char *pszFormat, ...)
 static bool disFileHeader(void)
 {
     bool fRc;
-    fRc = outputPrintf("; $Id$ \n"
+    fRc = outputPrintf("; $Id: MakeAlternativeSource.cpp 76553 2019-01-01 01:45:53Z vboxsync $ \n"
                        ";; @file\n"
                        "; Auto Generated source file. Do not edit.\n"
                        ";\n"
@@ -2147,7 +2147,7 @@ int main(int argc, char **argv)
             case 'V':
             {
                 /* The following is assuming that svn does it's job here. */
-                char szRev[] = "$Revision$";
+                char szRev[] = "$Revision: 76553 $";
                 char *psz = szRev;
                 while (*psz && !RT_C_IS_DIGIT(*psz))
                     psz++;

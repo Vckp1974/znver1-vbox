@@ -1,4 +1,4 @@
-; $Id$ 
+; $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $ 
 ;; @file
 ; Auto Generated source file. Do not edit.
 ;
@@ -6,7 +6,7 @@
 ;
 ; Source file: post.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  BIOS POST routines. Used only during initialization.
 ;  
 ;  
@@ -24,7 +24,7 @@
 ;
 ; Source file: bios.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -70,7 +70,7 @@
 ;
 ; Source file: print.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -116,7 +116,7 @@
 ;
 ; Source file: ata.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -162,7 +162,7 @@
 ;
 ; Source file: floppy.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -208,7 +208,7 @@
 ;
 ; Source file: floppyt.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Floppy drive tables.
 ;  
 ;  
@@ -226,7 +226,7 @@
 ;
 ; Source file: eltorito.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -272,7 +272,7 @@
 ;
 ; Source file: boot.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -318,7 +318,7 @@
 ;
 ; Source file: keyboard.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -364,7 +364,7 @@
 ;
 ; Source file: disk.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -410,7 +410,7 @@
 ;
 ; Source file: serial.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -456,7 +456,7 @@
 ;
 ; Source file: system.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -502,7 +502,7 @@
 ;
 ; Source file: invop.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Real mode invalid opcode handler.
 ;  
 ;  
@@ -562,7 +562,7 @@
 ;
 ; Source file: ps2mouse.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -608,7 +608,7 @@
 ;
 ; Source file: parallel.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PC BIOS - ???
 ;  
 ;  
@@ -654,7 +654,7 @@
 ;
 ; Source file: logo.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Stuff for drawing the BIOS logo.
 ;  
 ;  
@@ -672,7 +672,7 @@
 ;
 ; Source file: scsi.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  SCSI host adapter driver to boot from SCSI disks
 ;  
 ;  
@@ -690,7 +690,7 @@
 ;
 ; Source file: ahci.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  AHCI host adapter driver to boot from SATA disks.
 ;  
 ;  
@@ -708,7 +708,7 @@
 ;
 ; Source file: apm.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  APM BIOS support. Implements APM version 1.2.
 ;  
 ;  
@@ -726,7 +726,7 @@
 ;
 ; Source file: pcibios.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  PCI BIOS support.
 ;  
 ;  
@@ -744,7 +744,7 @@
 ;
 ; Source file: pciutil.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Utility routines for calling the PCI BIOS.
 ;  
 ;  
@@ -762,7 +762,7 @@
 ;
 ; Source file: vds.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Utility routines for calling the Virtual DMA Services.
 ;  
 ;  
@@ -780,7 +780,7 @@
 ;
 ; Source file: __U4M.asm
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Compiler support routines.
 ;  
 ;  
@@ -799,7 +799,7 @@
 ;
 ; Source file: __U4D.asm
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Compiler support routines.
 ;  
 ;  
@@ -818,7 +818,7 @@
 ;
 ; Source file: __U8RS.asm
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Compiler support routines.
 ;  
 ;  
@@ -837,7 +837,7 @@
 ;
 ; Source file: __U8LS.asm
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Compiler support routines.
 ;  
 ;  
@@ -856,7 +856,7 @@
 ;
 ; Source file: fmemset.asm
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Compiler support routines.
 ;  
 ;  
@@ -875,7 +875,7 @@
 ;
 ; Source file: fmemcpy.asm
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  Compiler support routines.
 ;  
 ;  
@@ -894,7 +894,7 @@
 ;
 ; Source file: pcibio32.asm
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  BIOS32 service directory and 32-bit PCI BIOS entry point
 ;  
 ;  
@@ -932,7 +932,7 @@
 ;
 ; Source file: orgs.asm
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  ???
 ;  
 ;  
@@ -978,7 +978,7 @@
 ;
 ; Source file: pci32.c
 ;
-;  $Id$
+;  $Id: VBoxBiosAlternative386.asm 76817 2019-01-14 14:38:15Z vboxsync $
 ;  32-bit PCI BIOS wrapper.
 ;  
 ;  

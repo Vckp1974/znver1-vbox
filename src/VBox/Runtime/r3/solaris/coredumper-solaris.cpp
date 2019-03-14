@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: coredumper-solaris.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Custom Core Dumper, Solaris.
  */

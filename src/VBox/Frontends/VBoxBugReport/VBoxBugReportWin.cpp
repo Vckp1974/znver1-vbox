@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxBugReportWin.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxBugReportWin - VirtualBox command-line diagnostics tool, Windows-specific part.
  */

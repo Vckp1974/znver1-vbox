@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxWatchdog.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxWatchdog.cpp - VirtualBox Watchdog.
  */

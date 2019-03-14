@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxProxyStub.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxProxyStub - Proxy Stub and Typelib, COM DLL exports and DLL init/term.
  *

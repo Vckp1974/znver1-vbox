@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxBs3ObjConverter.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualBox Validation Kit - Boot Sector 3 object file convert.
  */
@@ -5472,7 +5472,7 @@ int main(int argc, char **argv)
                         break;
 
                     case 'V':
-                        printf("%s\n", "$Revision$");
+                        printf("%s\n", "$Revision: 76553 $");
                         return 0;
 
                     case '?':

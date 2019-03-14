@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIExtraDataDefs.h 76626 2019-01-03 21:18:50Z vboxsync $ */
 /** @file
  * VBox Qt GUI - Extra-data related definitions.
  */

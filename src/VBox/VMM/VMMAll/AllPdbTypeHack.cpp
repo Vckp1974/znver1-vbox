@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: AllPdbTypeHack.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Debug info hack for the VM and VMCPU structures.
  */

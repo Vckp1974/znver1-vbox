@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UsbTestService.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * UsbTestService - Remote USB test configuration and execution server.
  */
@@ -1551,7 +1551,7 @@ static RTEXITCODE utsParseArgv(int argc, char **argv, bool *pfExit)
             }
 
             case 'V':
-                RTPrintf("$Revision$\n");
+                RTPrintf("$Revision: 76553 $\n");
                 *pfExit = true;
                 return RTEXITCODE_SUCCESS;
 

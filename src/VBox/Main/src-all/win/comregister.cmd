@@ -1,5 +1,5 @@
 @echo off
-REM $Id$
+REM $Id: comregister.cmd 76553 2019-01-01 01:45:53Z vboxsync $
 REM
 REM Script to register the VirtualBox COM classes
 REM (both inproc and out-of-process)

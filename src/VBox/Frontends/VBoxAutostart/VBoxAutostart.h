@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxAutostart.h 76582 2019-01-01 06:25:48Z vboxsync $ */
 /** @file
  * VBoxAutostart - VirtualBox Autostart service.
  */

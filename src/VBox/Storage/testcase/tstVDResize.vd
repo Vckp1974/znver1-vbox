@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstVDResize.vd 76553 2019-01-01 01:45:53Z vboxsync $ */
 /**
  * Storage: Resize testing for VDI.
  */

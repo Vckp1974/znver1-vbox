@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxDnD.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxDnD.cpp - Windows-specific bits of the drag and drop service.
  */

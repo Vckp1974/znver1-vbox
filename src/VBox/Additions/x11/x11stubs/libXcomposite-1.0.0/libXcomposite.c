@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: libXcomposite.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 
 /** @file
  * X.Org libXcomposite.so linker stub

@@ -1,4 +1,4 @@
-# $Revision$
+# $Revision: 76553 $
 ## @file
 # VirtualBox Guest Additions Module Makefile.
 #

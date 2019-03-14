@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: strhash1.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - String Hashing by Algorithm \#1.
  */

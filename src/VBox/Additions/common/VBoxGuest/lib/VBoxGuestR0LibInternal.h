@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxGuestR0LibInternal.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxGuestLibR0 - Internal header.
  */

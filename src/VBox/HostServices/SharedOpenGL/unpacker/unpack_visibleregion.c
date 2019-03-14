@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: unpack_visibleregion.c 76787 2019-01-11 20:00:15Z vboxsync $ */
 /** @file
  * VBox Packing VisibleRegion information
  */

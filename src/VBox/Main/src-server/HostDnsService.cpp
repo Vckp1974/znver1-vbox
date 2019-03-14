@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: HostDnsService.cpp 76592 2019-01-01 20:13:07Z vboxsync $ */
 /** @file
  * Base class for Host DNS & Co services.
  */

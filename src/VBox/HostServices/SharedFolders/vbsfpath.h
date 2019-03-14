@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vbsfpath.h 76570 2019-01-01 04:36:36Z vboxsync $ */
 /** @file
  * Shared Folders Service - Guest/host path convertion and verification.
  */

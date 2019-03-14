@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: bs3-fpustate-1-template.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * BS3Kit - bs3-fpustate-1, C code template.
  */

@@ -1,4 +1,4 @@
-# $Id$
+# $Id: stdsoap2.sed 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # WebService - SED script for inserting a iprt/win/windows.h include
 #              before stdsoap2.h in soapStub.h.  This prevents hacking

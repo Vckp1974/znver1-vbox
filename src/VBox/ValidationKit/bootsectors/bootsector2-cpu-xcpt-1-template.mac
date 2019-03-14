@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bootsector2-cpu-xcpt-1-template.mac 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Bootsector test for basic exceptions - multi mode template.
 ;

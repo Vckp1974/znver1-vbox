@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vbox-greeter.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * vbox-greeter - an own LightDM greeter module supporting auto-logons
  *                controlled by the host.

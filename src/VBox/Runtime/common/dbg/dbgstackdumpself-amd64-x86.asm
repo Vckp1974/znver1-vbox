@@ -1,4 +1,4 @@
-; $Id$
+; $Id: dbgstackdumpself-amd64-x86.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - RTDbgStackDumpSelf assembly wrapper calling rtDbgStackDumpSelfWorker.
 ;

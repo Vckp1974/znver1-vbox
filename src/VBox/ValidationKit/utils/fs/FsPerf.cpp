@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: FsPerf.cpp 76801 2019-01-14 07:18:24Z vboxsync $ */
 /** @file
  * NetPerf - File System Performance Benchmark.
  */
@@ -1012,7 +1012,7 @@ int main(int argc, char *argv[])
 
             case 'V':
             {
-                char szRev[] = "$Revision$";
+                char szRev[] = "$Revision: 76801 $";
                 szRev[RT_ELEMENTS(szRev) - 2] = '\0';
                 RTPrintf(RTStrStrip(strchr(szRev, ':') + 1));
                 return RTEXITCODE_SUCCESS;

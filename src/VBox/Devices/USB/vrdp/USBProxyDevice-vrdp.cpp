@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: USBProxyDevice-vrdp.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * USB device proxy - the VRDP backend, calls the RemoteUSBBackend methods.
  */

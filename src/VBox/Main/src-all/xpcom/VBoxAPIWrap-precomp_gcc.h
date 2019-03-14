@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxAPIWrap-precomp_gcc.h 76599 2019-01-02 01:04:44Z vboxsync $ */
 /** @file
  * VirtualBox COM - GCC precompiled header for the API wrappers.
  */

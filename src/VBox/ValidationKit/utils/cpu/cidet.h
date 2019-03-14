@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: cidet.h 76579 2019-01-01 06:14:44Z vboxsync $ */
 /** @file
  * CPU Instruction Decoding & Execution Tests - C/C++ Header.
  */

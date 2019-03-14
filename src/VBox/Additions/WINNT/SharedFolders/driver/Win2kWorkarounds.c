@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Win2kWorkarounds.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualBox Windows Guest Shared Folders - Windows 2000 Hacks.
  */

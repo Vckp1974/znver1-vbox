@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: MediumFormatImpl.cpp 76592 2019-01-01 20:13:07Z vboxsync $ */
 /** @file
  * MediumFormat COM class implementation
  */

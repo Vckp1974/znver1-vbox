@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: utils.h 76576 2019-01-01 06:05:25Z vboxsync $ */
 /** @file
  * ComHostUtils.cpp
  */

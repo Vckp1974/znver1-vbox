@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: makepackage.sh 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # VirtualBox Solaris Guest Additions package creation script.
 #

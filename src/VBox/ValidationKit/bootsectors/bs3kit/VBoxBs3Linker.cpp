@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxBs3Linker.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualBox Validation Kit - Boot Sector 3 "linker".
  */
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
                     }
 
                     case 'V':
-                        printf("%s\n", "$Revision$");
+                        printf("%s\n", "$Revision: 76553 $");
                         free(paInputs);
                         return 0;
 

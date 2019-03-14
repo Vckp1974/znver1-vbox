@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: TemplateRsrcDefs.h 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Defines for templates that does not have Windows.h handy.
  */

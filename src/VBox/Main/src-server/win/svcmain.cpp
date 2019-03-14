@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: svcmain.cpp 76592 2019-01-01 20:13:07Z vboxsync $ */
 /** @file
  * SVCMAIN - COM out-of-proc server main entry
  */

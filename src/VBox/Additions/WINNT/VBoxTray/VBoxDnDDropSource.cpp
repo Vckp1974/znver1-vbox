@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxDnDDropSource.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxDnDSource.cpp - IDropSource implementation.
  */

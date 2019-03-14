@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: splitBGRA.c 71027 2018-02-15 14:33:48Z vboxsync $ */
 float vboxSplitBGRA(vec4 color, float coord)
 {
     int pix = int(coord);

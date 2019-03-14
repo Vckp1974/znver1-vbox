@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxRTStableCheck.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT Testcase - Testing that stable exports are all present in VBoxRT.
  */

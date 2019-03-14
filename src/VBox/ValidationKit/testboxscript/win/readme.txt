@@ -1,4 +1,4 @@
-$Id$
+$Id: readme.txt 72214 2018-05-15 09:31:45Z vboxsync $
 
 
 Preparations:

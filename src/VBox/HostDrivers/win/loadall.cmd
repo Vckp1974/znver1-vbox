@@ -1,5 +1,5 @@
 @echo off
-rem $Id$
+rem $Id: loadall.cmd 76553 2019-01-01 01:45:53Z vboxsync $
 rem rem @file
 rem Windows NT batch script for launching loadall.sh
 rem

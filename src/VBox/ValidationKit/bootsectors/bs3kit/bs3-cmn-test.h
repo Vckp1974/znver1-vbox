@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: bs3-cmn-test.h 76579 2019-01-01 06:14:44Z vboxsync $ */
 /** @file
  * BS3Kit - Bs3Test internal header.
  */

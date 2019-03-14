@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstDeviceVMMStubs.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * tstDevice - Test framework for PDM devices/drivers, shim library exporting methods
  *             originally for VBoxVMM for intercepting (we don't want to use the PDM module

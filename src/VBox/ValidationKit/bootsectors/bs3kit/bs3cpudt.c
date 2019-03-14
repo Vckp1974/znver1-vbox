@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: bs3cpudt.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * BS3Kit - Tests Bs3CpuDetect_rm.
  */

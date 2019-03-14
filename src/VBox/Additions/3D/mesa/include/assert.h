@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: assert.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * Replaces C runtime assert with a simplified version which just hits breakpoint.
  *

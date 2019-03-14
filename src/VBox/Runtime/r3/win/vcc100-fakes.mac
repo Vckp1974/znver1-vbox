@@ -1,4 +1,4 @@
-; $Id$
+; $Id: vcc100-fakes.mac 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - Common macros for the Visual C++ 2010+ CRT import fakes.
 ;

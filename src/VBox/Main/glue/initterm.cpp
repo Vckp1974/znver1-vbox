@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: initterm.cpp 76592 2019-01-01 20:13:07Z vboxsync $ */
 /** @file
  * MS COM / XPCOM Abstraction Layer - Initialization and Termination.
  */

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: GuestDnDTargetImpl.h 76562 2019-01-01 03:22:50Z vboxsync $ */
 /** @file
  * VBox Console COM Class implementation - Guest drag'n drop target.
  */

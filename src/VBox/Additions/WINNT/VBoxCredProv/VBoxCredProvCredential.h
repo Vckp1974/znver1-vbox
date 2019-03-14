@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxCredProvCredential.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * VBoxCredProvCredential - Class for keeping and handling the passed credentials.
  */

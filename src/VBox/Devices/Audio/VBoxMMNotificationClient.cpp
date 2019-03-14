@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxMMNotificationClient.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxMMNotificationClient.cpp - Implementation of the IMMNotificationClient interface
  *                                to detect audio endpoint changes.

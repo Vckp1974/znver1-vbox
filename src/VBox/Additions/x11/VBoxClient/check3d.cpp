@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: check3d.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * X11 guest client - 3D pass-through check.
  */

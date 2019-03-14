@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIFileManagerTable.cpp 76671 2019-01-07 12:15:00Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIFileManagerTable class implementation.
  */

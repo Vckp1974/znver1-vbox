@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bs3-wc16-U8DR.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; BS3Kit - 16-bit Watcom C/C++, 64-bit unsigned integer modulo.
 ;

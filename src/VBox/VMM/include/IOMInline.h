@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: IOMInline.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * IOM - Inlined functions.
  */

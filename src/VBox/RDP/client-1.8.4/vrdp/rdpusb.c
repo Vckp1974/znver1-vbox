@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: rdpusb.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Remote Desktop Protocol client - USB Channel Process Functions
  */

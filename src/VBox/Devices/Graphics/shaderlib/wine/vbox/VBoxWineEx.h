@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxWineEx.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * VBox extension to Wine D3D
  */

@@ -1,4 +1,4 @@
-; $Id$
+; $Id: pmode.inc 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; Enter and exit a minimal protected-mode environment.
 ;

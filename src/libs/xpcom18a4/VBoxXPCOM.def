@@ -1,4 +1,4 @@
-; $Id$
+; $Id: VBoxXPCOM.def 74273 2018-09-14 15:48:47Z vboxsync $
 ;; @file
 ; VirtualBox XPCOM - Import library definition file.
 

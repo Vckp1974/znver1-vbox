@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UIDesktopServices_x11.cpp 76818 2019-01-14 16:17:07Z vboxsync $ */
 /** @file
  * VBox Qt GUI - Qt GUI - Utility Classes and Functions specific to X11..
  */

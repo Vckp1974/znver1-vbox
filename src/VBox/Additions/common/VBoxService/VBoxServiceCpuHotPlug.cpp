@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxServiceCpuHotPlug.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxService - Guest Additions CPU Hot-Plugging Service.
  */

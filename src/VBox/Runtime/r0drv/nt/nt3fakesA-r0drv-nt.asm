@@ -1,4 +1,4 @@
-; $Id$
+; $Id: nt3fakesA-r0drv-nt.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - Companion to nt3fakes-r0drv-nt.cpp that provides import stuff to satisfy the linker.
 ;

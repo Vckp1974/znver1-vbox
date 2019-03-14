@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: expandospu.h 56566 2015-06-20 08:10:59Z vboxsync $ */
 /* Copyright (c) 2001, Stanford University
  * All rights reserved.
  *

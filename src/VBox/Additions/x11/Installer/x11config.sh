@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: x11config.sh 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # Guest Additions X11 config update script
 #

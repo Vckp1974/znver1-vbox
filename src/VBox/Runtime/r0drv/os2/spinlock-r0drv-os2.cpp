@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: spinlock-r0drv-os2.cpp 76452 2018-12-25 01:41:25Z vboxsync $ */
 /** @file
  * IPRT - Spinlocks, Ring-0 Driver, OS/2.
  */

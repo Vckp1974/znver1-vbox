@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UISession.cpp 76613 2019-01-02 15:54:15Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UISession class implementation.
  */

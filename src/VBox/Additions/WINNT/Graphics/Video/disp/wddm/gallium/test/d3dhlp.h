@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: d3dhlp.h 76563 2019-01-01 03:53:56Z vboxsync $ */
 /** @file
  * Gallium D3D testcase. Various D3D helpers.
  */

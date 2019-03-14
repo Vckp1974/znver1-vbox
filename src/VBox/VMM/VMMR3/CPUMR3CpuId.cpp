@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: CPUMR3CpuId.cpp 76678 2019-01-07 13:48:16Z vboxsync $ */
 /** @file
  * CPUM - CPU ID part.
  */

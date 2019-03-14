@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Intel_Core_i7_6700K.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * CPU database entry "Intel Core i7-6700K".
  * Generated at 2015-11-04T14:22:26Z by VBoxCpuReport v5.0.51r103906 on win.amd64.

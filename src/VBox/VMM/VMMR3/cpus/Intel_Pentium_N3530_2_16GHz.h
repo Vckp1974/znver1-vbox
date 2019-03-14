@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: Intel_Pentium_N3530_2_16GHz.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * CPU database entry "Intel Pentium N3530 2.16GHz".
  * Generated at 2016-04-29T13:34:27Z by VBoxCpuReport v5.0.51r106929 on win.amd64.

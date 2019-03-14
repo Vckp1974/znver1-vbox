@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: dllmain.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxC - COM DLL exports and DLL init/term.
  */

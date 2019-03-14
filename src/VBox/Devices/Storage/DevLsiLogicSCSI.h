@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DevLsiLogicSCSI.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * VBox storage devices: LsiLogic LSI53c1030 SCSI controller - Defines and structures.
  */

@@ -1,4 +1,4 @@
--- $Id$
+-- $Id: TestManagerDatabaseForeignKeyErHacks.pgsql 76553 2019-01-01 01:45:53Z vboxsync $
 --- @file
 -- VBox Test Manager Database Addendum that adds non-unique foreign keys.
 --

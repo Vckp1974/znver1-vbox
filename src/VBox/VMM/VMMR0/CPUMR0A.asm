@@ -1,4 +1,4 @@
- ; $Id$
+ ; $Id: CPUMR0A.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; CPUM - Ring-0 Assembly Routines (supporting HM and IEM).
 ;

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: boot_service_table.h 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * boot_service_table.h - boot service table declaration.
  */

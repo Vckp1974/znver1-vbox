@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: bs3-cmn-SelProtFar32ToFlat32.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * BS3Kit - Bs3SelProtFar32ToFlat32
  */

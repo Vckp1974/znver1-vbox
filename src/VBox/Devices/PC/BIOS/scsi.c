@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: scsi.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * SCSI host adapter driver to boot from SCSI disks
  */

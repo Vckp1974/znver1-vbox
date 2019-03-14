@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxDbgStatsQt.h 76564 2019-01-01 03:57:14Z vboxsync $ */
 /** @file
  * VBox Debugger GUI - Statistics.
  */

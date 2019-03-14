@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: postinst-common.sh 76611 2019-01-02 15:16:20Z vboxsync $
 ## @file
 # Oracle VM VirtualBox
 # VirtualBox Linux post-installer common portions

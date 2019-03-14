@@ -1,4 +1,4 @@
-; $Id$
+; $Id: DosVmOff.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; 16-bit DOS COM program that powers off the VM.
 ;

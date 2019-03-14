@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: dirrel-r3-nt.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Directory relative base APIs, NT implementation
  */

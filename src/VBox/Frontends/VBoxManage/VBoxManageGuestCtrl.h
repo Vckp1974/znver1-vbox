@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxManageGuestCtrl.h 76582 2019-01-01 06:25:48Z vboxsync $ */
 /** @file
  * VBoxManageGuestCtrl.h - Definitions for guest control.
  */

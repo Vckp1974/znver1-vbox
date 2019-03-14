@@ -1,4 +1,4 @@
-; $Id$
+; $Id: bignum-amd64-x86.asm 76553 2019-01-01 01:45:53Z vboxsync $
 ;; @file
 ; IPRT - Big Integer Numbers, AMD64 and X86 Assembly Workers
 ;

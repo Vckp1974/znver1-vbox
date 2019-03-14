@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: pkcs7-template.h 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Crypto - PKCS \#7, Core APIs, Code Generator Template.
  */

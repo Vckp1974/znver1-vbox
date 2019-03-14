@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: UnattendedScript.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Classes for reading/parsing/saving scripts for unattended installation.
  */

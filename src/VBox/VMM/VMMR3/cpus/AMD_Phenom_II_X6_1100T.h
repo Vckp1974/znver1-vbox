@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: AMD_Phenom_II_X6_1100T.h 76585 2019-01-01 06:31:29Z vboxsync $ */
 /** @file
  * CPU database entry "AMD Phenom II X6 1100T".
  * Generated at 2013-12-17T13:39:08Z by VBoxCpuReport v4.3.53r91360 on linux.amd64.

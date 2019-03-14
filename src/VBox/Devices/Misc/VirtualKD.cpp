@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VirtualKD.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VirtualKD - Device stub/loader for fast Windows kernel-mode debugging.
  *

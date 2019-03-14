@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: RTNtPathExpand8dot3Path.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Native NT, RTNtPathExpand8dot3Path.
  */

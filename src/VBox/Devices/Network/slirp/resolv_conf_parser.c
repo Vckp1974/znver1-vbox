@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: resolv_conf_parser.c 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * resolv_conf_parser.c - parser of resolv.conf resolver(5)
  */

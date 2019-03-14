@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DevVGA-SVGA.cpp 76789 2019-01-12 10:53:42Z vboxsync $ */
 /** @file
  * VMware SVGA device.
  *

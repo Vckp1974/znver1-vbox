@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: DevVGA-SVGA3d-cocoa.h 76565 2019-01-01 04:23:20Z vboxsync $ */
 /** @file
  * VirtualBox OpenGL Cocoa Window System Helper Implementation.
  */

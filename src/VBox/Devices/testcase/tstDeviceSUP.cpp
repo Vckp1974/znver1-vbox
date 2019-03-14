@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstDeviceSUP.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * tstDevice - Test framework for PDM devices/drivers, SUP library exports.
  */

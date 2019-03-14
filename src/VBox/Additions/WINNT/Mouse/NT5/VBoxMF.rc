@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxMF.rc 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * Windows NT5+ Guest Additions Mouse Filter Driver version info
  */

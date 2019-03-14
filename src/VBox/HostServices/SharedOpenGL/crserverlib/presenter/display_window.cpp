@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: display_window.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 
 /** @file
  * Presenter API: CrFbDisplayWindow class implementation -- display content into host GUI window.

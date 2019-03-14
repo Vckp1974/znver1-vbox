@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: tstIntNet-1.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBox - Testcase for internal networking, simple NetFlt trunk creation.
  */
@@ -808,7 +808,7 @@ extern "C" DECLEXPORT(int) TrustedMain(int argc, char **argv, char **envp)
                 return 1;
 
             case 'V':
-                RTPrintf("$Revision$\n");
+                RTPrintf("$Revision: 76553 $\n");
                 return 0;
 
             default:

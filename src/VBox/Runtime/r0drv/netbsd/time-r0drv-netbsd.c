@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: time-r0drv-netbsd.c 63347 2016-08-11 21:28:09Z vboxsync $ */
 /** @file
  * IPRT - Time, Ring-0 Driver, NetBSD.
  */

@@ -1,4 +1,4 @@
-; $Id$
+; $Id: RTR0AssertPanicSystem-r0drv-os2.asm 69218 2017-10-24 14:57:36Z vboxsync $
 ;; @file
 ; IPRT - RTR0AssertPanicSystem, Ring-0 Driver, OS/2.
 ;

@@ -1,4 +1,4 @@
-# $Id$
+# $Id: tstAsmStructsAsm-lst.sed 76553 2019-01-01 01:45:53Z vboxsync $
 ## @file
 # For testing assembly struct when using yasm.
 #

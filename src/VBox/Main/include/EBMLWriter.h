@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: EBMLWriter.h 76760 2019-01-10 18:07:47Z vboxsync $ */
 /** @file
  * EBMLWriter.h - EBML writer.
  */

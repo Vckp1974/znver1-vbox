@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: taf-asn1-decoder.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * IPRT - Crypto - Trust Anchor Format (RFC-5914), Decoder for ASN.1.
  */

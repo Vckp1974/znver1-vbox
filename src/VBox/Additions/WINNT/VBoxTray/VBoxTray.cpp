@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: VBoxTray.cpp 76553 2019-01-01 01:45:53Z vboxsync $ */
 /** @file
  * VBoxTray - Guest Additions Tray Application
  */
