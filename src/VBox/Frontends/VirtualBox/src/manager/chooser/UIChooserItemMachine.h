@@ -1,4 +1,4 @@
-/* $Id: UIChooserItemMachine.h 76581 2019-01-01 06:24:57Z vboxsync $ */
+/* $Id: UIChooserItemMachine.h 76935 2019-01-22 12:18:08Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserItemMachine class declaration.
  */
@@ -191,6 +191,9 @@ private slots:
       * @{ */
         /** Handles top-level window remaps. */
         void sltHandleWindowRemapped();
+
+        /** Updates first row maximum width. */
+        void sltUpdateFirstRowMaximumWidth() { updateFirstRowMaximumWidth(); }
     /** @} */
 
 private:
@@ -275,6 +278,9 @@ private:
 
     /** @name Item stuff.
       * @{ */
+        /** Holds initial item position. */
+        const int  m_iPosition;
+
         /** Holds item minimum default lightness. */
         int  m_iDefaultLightnessMin;
         /** Holds item maximum default lightness. */

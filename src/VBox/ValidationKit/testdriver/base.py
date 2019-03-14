@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# $Id: base.py 76553 2019-01-01 01:45:53Z vboxsync $
+# $Id: base.py 76939 2019-01-22 16:51:28Z vboxsync $
 # pylint: disable=C0302
 
 """
@@ -27,7 +27,7 @@ CDDL are applicable instead of those of the GPL.
 You may elect to license modified versions of this file under the
 terms and conditions of either the GPL or the CDDL or both.
 """
-__version__ = "$Revision: 76553 $"
+__version__ = "$Revision: 76939 $"
 
 
 # Standard Python imports.

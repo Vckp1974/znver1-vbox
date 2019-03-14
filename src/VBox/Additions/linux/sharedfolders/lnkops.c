@@ -1,4 +1,4 @@
-/* $Id: lnkops.c 76744 2019-01-09 16:29:03Z vboxsync $ */
+/* $Id: lnkops.c 76939 2019-01-22 16:51:28Z vboxsync $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, operations for symbolic links.
  */

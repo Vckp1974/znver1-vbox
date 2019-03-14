@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: makepackage.sh 76818 2019-01-14 16:17:07Z vboxsync $
+# $Id: makepackage.sh 76939 2019-01-22 16:51:28Z vboxsync $
 ## @file
 # VirtualBox package creation script, Solaris hosts.
 #
