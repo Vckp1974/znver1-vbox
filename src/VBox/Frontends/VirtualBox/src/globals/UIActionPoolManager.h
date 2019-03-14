@@ -1,4 +1,4 @@
-/* $Id: UIActionPoolManager.h 76776 2019-01-11 13:21:59Z vboxsync $ */
+/* $Id: UIActionPoolManager.h 76996 2019-01-25 21:36:44Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIActionPoolManager class declaration.
  */

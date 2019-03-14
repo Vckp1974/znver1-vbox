@@ -1,4 +1,4 @@
-/* $Id: UIMediumSearchWidget.h 76979 2019-01-24 15:59:56Z vboxsync $ */
+/* $Id: UIMediumSearchWidget.h 76996 2019-01-25 21:36:44Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIMediumSearchWidget class declaration.
  */

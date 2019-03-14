@@ -1,4 +1,4 @@
-/* $Id: UIExtraDataManager.h 76977 2019-01-24 14:43:37Z vboxsync $ */
+/* $Id: UIExtraDataManager.h 76996 2019-01-25 21:36:44Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIExtraDataManager class declaration.
  */

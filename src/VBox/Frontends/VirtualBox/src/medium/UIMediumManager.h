@@ -1,4 +1,4 @@
-/* $Id: UIMediumManager.h 76581 2019-01-01 06:24:57Z vboxsync $ */
+/* $Id: UIMediumManager.h 76996 2019-01-25 21:36:44Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIMediumManager class declaration.
  */
