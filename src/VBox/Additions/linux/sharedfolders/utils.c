@@ -1,4 +1,4 @@
-/* $Id: utils.c 77538 2019-03-02 18:31:22Z vboxsync $ */
+/* $Id: utils.c 77561 2019-03-04 19:56:32Z vboxsync $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, utility functions.
  *
@@ -34,6 +34,61 @@
 #include <iprt/asm.h>
 #include <iprt/err.h>
 #include <linux/vfs.h>
+
+
+int vbsf_nlscpy(struct vbsf_super_info *sf_g, char *name, size_t name_bound_len, const unsigned char *utf8_name, size_t utf8_len)
+{
+    if (sf_g->nls) {
+        const char *in;
+        char *out;
+        size_t out_len;
+        size_t out_bound_len;
+        size_t in_bound_len;
+
+        in = utf8_name;
+        in_bound_len = utf8_len;
+
+        out = name;
+        out_len = 0;
+        out_bound_len = name_bound_len;
+
+        while (in_bound_len) {
+            int nb;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
+            unicode_t uni;
+
+            nb = utf8_to_utf32(in, in_bound_len, &uni);
+#else
+            linux_wchar_t uni;
+
+            nb = utf8_mbtowc(&uni, in, in_bound_len);
+#endif
+            if (nb < 0) {
+                LogFunc(("utf8_mbtowc failed(%s) %x:%d\n", (const char *)utf8_name, *in, in_bound_len));
+                return -EINVAL;
+            }
+            in += nb;
+            in_bound_len -= nb;
+
+            nb = sf_g->nls->uni2char(uni, out, out_bound_len);
+            if (nb < 0) {
+                LogFunc(("nls->uni2char failed(%s) %x:%d\n", utf8_name, uni, out_bound_len));
+                return nb;
+            }
+            out += nb;
+            out_bound_len -= nb;
+            out_len += nb;
+        }
+
+        *out = 0;
+    } else {
+        if (utf8_len + 1 > name_bound_len)
+            return -ENAMETOOLONG;
+
+        memcpy(name, utf8_name, utf8_len + 1);
+    }
+    return 0;
+}
 
 
 /**
@@ -81,31 +136,10 @@ DECLINLINE(void) vbsf_time_to_vbox(PRTTIMESPEC pVBoxDst, struct timespec64 const
 
 
 /**
- * Converts Linux access permissions to VBox ones (mode & 0777).
- *
- * @note Currently identical.
- */
-DECLINLINE(uint32_t) sf_access_permissions_to_vbox(int fAttr)
-{
-    /* Access bits should be the same: */
-    AssertCompile(RTFS_UNIX_IRUSR == S_IRUSR);
-    AssertCompile(RTFS_UNIX_IWUSR == S_IWUSR);
-    AssertCompile(RTFS_UNIX_IXUSR == S_IXUSR);
-    AssertCompile(RTFS_UNIX_IRGRP == S_IRGRP);
-    AssertCompile(RTFS_UNIX_IWGRP == S_IWGRP);
-    AssertCompile(RTFS_UNIX_IXGRP == S_IXGRP);
-    AssertCompile(RTFS_UNIX_IROTH == S_IROTH);
-    AssertCompile(RTFS_UNIX_IWOTH == S_IWOTH);
-    AssertCompile(RTFS_UNIX_IXOTH == S_IXOTH);
-
-    return fAttr & RTFS_UNIX_ALL_ACCESS_PERMS;
-}
-
-
-/**
  * Converts VBox access permissions  to Linux ones (mode & 0777).
  *
  * @note Currently identical.
+ * @sa   sf_access_permissions_to_vbox
  */
 DECLINLINE(int) sf_access_permissions_to_linux(uint32_t fAttr)
 {
@@ -205,13 +239,11 @@ void vbsf_init_inode(struct inode *inode, struct vbsf_inode_info *sf_i, PSHFLFSO
     sf_i->BirthTime = pObjInfo->BirthTime;
 }
 
+
 /**
  * Update the inode with new object info from the host.
  *
- * Called by sf_inode_revalidate() and sf_inode_revalidate_with_handle(), the
- * inode is probably locked...
- *
- * @todo sort out the inode locking situation.
+ * Called by sf_inode_revalidate() and sf_inode_revalidate_with_handle().
  */
 void vbsf_update_inode(struct inode *pInode, struct vbsf_inode_info *pInodeInfo, PSHFLFSOBJINFO pObjInfo,
                        struct vbsf_super_info *sf_g, bool fInodeLocked)
@@ -328,12 +360,13 @@ int vbsf_stat(const char *caller, struct vbsf_super_info *sf_g, SHFLSTRING *path
     return rc;
 }
 
+
 /**
  * Revalidate an inode, inner worker.
  *
  * @sa sf_inode_revalidate()
  */
-int vbsf_inode_revalidate_worker(struct dentry *dentry, bool fForced)
+int vbsf_inode_revalidate_worker(struct dentry *dentry, bool fForced, bool fInodeLocked)
 {
     int rc;
     struct inode *pInode = dentry ? dentry->d_inode : NULL;
@@ -366,7 +399,7 @@ int vbsf_inode_revalidate_worker(struct dentry *dentry, bool fForced)
                         /*
                          * Reset the TTL and copy the info over into the inode structure.
                          */
-                        vbsf_update_inode(pInode, sf_i, &pReq->ObjInfo, sf_g, true /*fInodeLocked??*/);
+                        vbsf_update_inode(pInode, sf_i, &pReq->ObjInfo, sf_g, fInodeLocked);
                     } else if (rc == VERR_INVALID_HANDLE) {
                         rc = -ENOENT; /* Restore.*/
                     } else {
@@ -394,8 +427,7 @@ int vbsf_inode_revalidate_worker(struct dentry *dentry, bool fForced)
                             /*
                              * Reset the TTL and copy the info over into the inode structure.
                              */
-                            vbsf_update_inode(pInode, sf_i, &pReq->CreateParms.Info,
-                                    sf_g, true /*fInodeLocked??*/);
+                            vbsf_update_inode(pInode, sf_i, &pReq->CreateParms.Info, sf_g, fInodeLocked);
                             rc = 0;
                         } else {
                             rc = -ENOENT;
@@ -420,19 +452,23 @@ int vbsf_inode_revalidate_worker(struct dentry *dentry, bool fForced)
 }
 
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 18)
 /**
- * Revalidate an inode.
+ * Revalidate an inode for 2.4.
  *
- * This is called directly as inode-op on 2.4, indirectly as dir-op
- * vbsf_dentry_revalidate() on 2.4/2.6.  The job is to find out whether
- * dentry/inode is still valid.  The test fails if @a dentry does not have an
- * inode or vbsf_stat() is unsuccessful, otherwise we return success and update
- * inode attributes.
+ * This is called in the stat(), lstat() and readlink() code paths.  In the stat
+ * cases the caller will use the result afterwards to produce the stat data.
+ *
+ * @note 2.4.x has a getattr() inode operation too, but it is not used.
  */
 int vbsf_inode_revalidate(struct dentry *dentry)
 {
-    return vbsf_inode_revalidate_worker(dentry, false /*fForced*/);
+    /*
+     * We pretend the inode is locked here, as 2.4.x does not have inode level locking.
+     */
+    return vbsf_inode_revalidate_worker(dentry, false /*fForced*/, true /*fInodeLocked*/);
 }
+#endif /* < 2.5.18 */
 
 
 /**
@@ -484,11 +520,12 @@ int vbsf_inode_revalidate_with_handle(struct dentry *dentry, SHFLHANDLE hHostFil
     return err;
 }
 
+
 /* on 2.6 this is a proxy for [sf_inode_revalidate] which (as a side
    effect) updates inode attributes for [dentry] (given that [dentry]
    has inode at all) from these new attributes we derive [kstat] via
    [generic_fillattr] */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 18)
 
 # if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 int vbsf_inode_getattr(const struct path *path, struct kstat *kstat, u32 request_mask, unsigned int flags)
@@ -514,11 +551,11 @@ int vbsf_inode_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat
      */
     switch (flags & AT_STATX_SYNC_TYPE) {
         default:
-            rc = vbsf_inode_revalidate_worker(dentry, false /*fForced*/);
+            rc = vbsf_inode_revalidate_worker(dentry, false /*fForced*/, false /*fInodeLocked*/);
             break;
 
         case AT_STATX_FORCE_SYNC:
-            rc = vbsf_inode_revalidate_worker(dentry, true /*fForced*/);
+            rc = vbsf_inode_revalidate_worker(dentry, true /*fForced*/, false /*fInodeLocked*/);
             break;
 
         case AT_STATX_DONT_SYNC:
@@ -526,14 +563,14 @@ int vbsf_inode_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat
             break;
     }
 # else
-    rc = vbsf_inode_revalidate_worker(dentry, false /*fForced*/);
+    rc = vbsf_inode_revalidate_worker(dentry, false /*fForced*/, false /*fInodeLocked*/);
 # endif
     if (rc == 0) {
         /* Do generic filling in of info. */
         generic_fillattr(dentry->d_inode, kstat);
 
         /* Add birth time. */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
         if (dentry->d_inode) {
             struct vbsf_inode_info *pInodeInfo = VBSF_GET_INODE_INFO(dentry->d_inode);
             if (pInodeInfo) {
@@ -541,7 +578,7 @@ int vbsf_inode_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat
                 kstat->result_mask |= STATX_BTIME;
             }
         }
-#endif
+# endif
 
         /*
          * FsPerf shows the following numbers for sequential file access against
@@ -570,128 +607,174 @@ int vbsf_inode_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat
     }
     return rc;
 }
+#endif /* >= 2.5.18 */
 
+
+/**
+ * Modify inode attributes.
+ */
 int vbsf_inode_setattr(struct dentry *dentry, struct iattr *iattr)
 {
-    struct vbsf_super_info *sf_g;
-    struct vbsf_inode_info *sf_i;
-    union SetAttrReqs
-    {
-        VBOXSFCREATEREQ         Create;
-        VBOXSFOBJINFOREQ        Info;
-        VBOXSFSETFILESIZEREQ    SetSize;
-        VBOXSFCLOSEREQ          Close;
-    } *pReq;
-    size_t cbReq;
-    SHFLHANDLE hHostFile;
+    struct inode           *pInode = dentry->d_inode;
+    struct vbsf_super_info *sf_g   = VBSF_GET_SUPER_INFO(pInode->i_sb);
+    struct vbsf_inode_info *sf_i   = VBSF_GET_INODE_INFO(pInode);
     int vrc;
-    int err = 0;
+    int rc;
 
-    TRACE();
+    SFLOGFLOW(("vbsf_inode_setattr: dentry=%p inode=%p ia_valid=%#x %s\n",
+               dentry, pInode, iattr->ia_valid, sf_i ? sf_i->path->String.ach : NULL));
+    AssertReturn(sf_i, -EINVAL);
 
-    sf_g = VBSF_GET_SUPER_INFO(dentry->d_inode->i_sb);
-    sf_i = VBSF_GET_INODE_INFO(dentry->d_inode);
-    cbReq = RT_MAX(sizeof(pReq->Info), sizeof(pReq->Create) + SHFLSTRING_HEADER_SIZE + sf_i->path->u16Size);
-    pReq = (union SetAttrReqs *)VbglR0PhysHeapAlloc(cbReq);
-    if (!pReq) {
-        LogFunc(("Failed to allocate %#x byte request buffer!\n", cbReq));
-        return -ENOMEM;
+    /*
+     * Need to check whether the caller is allowed to modify the attributes or not.
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+    rc = setattr_prepare(dentry, iattr);
+#else
+    rc = inode_change_ok(pInode, iattr);
+#endif
+    if (rc == 0) {
+        /*
+         * We only implement a handful of attributes, so ignore any attempts
+         * at setting bits we don't support.
+         */
+        if (iattr->ia_valid & (ATTR_MODE | ATTR_ATIME | ATTR_MTIME | ATTR_CTIME | ATTR_SIZE)) {
+            /*
+             * Try find a handle which allows us to modify the attributes, otherwise
+             * open the file/dir/whatever.
+             */
+            union SetAttrReqs
+            {
+                VBOXSFCREATEREQ         Create;
+                VBOXSFOBJINFOREQ        Info;
+                VBOXSFSETFILESIZEREQ    SetSize;
+                VBOXSFCLOSEREQ          Close;
+            }                  *pReq;
+            size_t              cbReq;
+            SHFLHANDLE          hHostFile;
+            struct vbsf_handle *pHandle = iattr->ia_valid & ATTR_SIZE
+                                        ? vbsf_handle_find(sf_i, VBSF_HANDLE_F_WRITE, 0)
+                                        : vbsf_handle_find(sf_i, 0, 0);
+            if (pHandle) {
+                hHostFile = pHandle->hHost;
+                cbReq = RT_MAX(sizeof(VBOXSFOBJINFOREQ), sizeof(VBOXSFSETFILESIZEREQ));
+                pReq  = (union SetAttrReqs *)VbglR0PhysHeapAlloc(cbReq);
+                if (pReq) {
+                    /* likely */
+                } else
+                    rc = -ENOMEM;
+            } else {
+                hHostFile = SHFL_HANDLE_NIL;
+                cbReq = RT_MAX(sizeof(pReq->Info), sizeof(pReq->Create) + SHFLSTRING_HEADER_SIZE + sf_i->path->u16Size);
+                pReq = (union SetAttrReqs *)VbglR0PhysHeapAlloc(cbReq);
+                if (pReq) {
+                    RT_ZERO(pReq->Create.CreateParms);
+                    pReq->Create.CreateParms.Handle      = SHFL_HANDLE_NIL;
+                    pReq->Create.CreateParms.CreateFlags = SHFL_CF_ACT_OPEN_IF_EXISTS
+                                                         | SHFL_CF_ACT_FAIL_IF_NEW
+                                                         | SHFL_CF_ACCESS_ATTR_WRITE;
+                    if (iattr->ia_valid & ATTR_SIZE)
+                        pReq->Create.CreateParms.CreateFlags |= SHFL_CF_ACCESS_WRITE;
+                    memcpy(&pReq->Create.StrPath, sf_i->path, SHFLSTRING_HEADER_SIZE + sf_i->path->u16Size);
+                    vrc = VbglR0SfHostReqCreate(sf_g->map.root, &pReq->Create);
+                    if (RT_SUCCESS(vrc)) {
+                        if (pReq->Create.CreateParms.Result == SHFL_FILE_EXISTS) {
+                            hHostFile = pReq->Create.CreateParms.Handle;
+                            Assert(hHostFile != SHFL_HANDLE_NIL);
+                            vbsf_dentry_chain_increase_ttl(dentry);
+                        } else {
+                            LogFunc(("file %s does not exist\n", sf_i->path->String.utf8));
+                            /** @todo    */
+                            rc = -ENOENT;
+                        }
+                    } else {
+                        rc = -RTErrConvertToErrno(vrc);
+                        LogFunc(("VbglR0SfCreate(%s) failed vrc=%Rrc rc=%d\n", sf_i->path->String.ach, vrc, rc));
+                    }
+                } else
+                    rc = -ENOMEM;
+            }
+            if (rc == 0) {
+                /*
+                 * Set mode and/or timestamps.
+                 */
+                if (iattr->ia_valid & (ATTR_MODE | ATTR_ATIME | ATTR_MTIME | ATTR_CTIME)) {
+                    /* Fill in the attributes.  Start by setting all to zero
+                       since the host will ignore zeroed fields. */
+                    RT_ZERO(pReq->Info.ObjInfo);
+
+                    if (iattr->ia_valid & ATTR_MODE) {
+                        pReq->Info.ObjInfo.Attr.fMode = sf_access_permissions_to_vbox(iattr->ia_mode);
+                        if (iattr->ia_mode & S_IFDIR)
+                            pReq->Info.ObjInfo.Attr.fMode |= RTFS_TYPE_DIRECTORY;
+                        else if (iattr->ia_mode & S_IFLNK)
+                            pReq->Info.ObjInfo.Attr.fMode |= RTFS_TYPE_SYMLINK;
+                        else
+                            pReq->Info.ObjInfo.Attr.fMode |= RTFS_TYPE_FILE;
+                    }
+                    if (iattr->ia_valid & ATTR_ATIME)
+                        vbsf_time_to_vbox(&pReq->Info.ObjInfo.AccessTime, &iattr->ia_atime);
+                    if (iattr->ia_valid & ATTR_MTIME)
+                        vbsf_time_to_vbox(&pReq->Info.ObjInfo.ModificationTime, &iattr->ia_mtime);
+                    if (iattr->ia_valid & ATTR_CTIME)
+                        vbsf_time_to_vbox(&pReq->Info.ObjInfo.ChangeTime, &iattr->ia_ctime);
+
+                    /* Make the change. */
+                    vrc = VbglR0SfHostReqSetObjInfo(sf_g->map.root, &pReq->Info, hHostFile);
+                    if (RT_SUCCESS(vrc)) {
+                        vbsf_update_inode(pInode, sf_i, &pReq->Info.ObjInfo, sf_g, true /*fLocked*/);
+                    } else {
+                        rc = -RTErrConvertToErrno(vrc);
+                        LogFunc(("VbglR0SfHostReqSetObjInfo(%s) failed vrc=%Rrc rc=%d\n", sf_i->path->String.ach, vrc, rc));
+                    }
+                }
+
+                /*
+                 * Change the file size.
+                 * Note! Old API is more convenient here as it gives us up to date
+                 *       inode info back.
+                 */
+                if ((iattr->ia_valid & ATTR_SIZE) && rc == 0) {
+                    /*vrc = VbglR0SfHostReqSetFileSize(sf_g->map.root, &pReq->SetSize, hHostFile, iattr->ia_size);
+                    if (RT_SUCCESS(vrc)) {
+                        i_size_write(pInode, iattr->ia_size);
+                    } else if (vrc == VERR_NOT_IMPLEMENTED)*/ {
+                        /* Fallback for pre 6.0 hosts: */
+                        RT_ZERO(pReq->Info.ObjInfo);
+                        pReq->Info.ObjInfo.cbObject = iattr->ia_size;
+                        vrc = VbglR0SfHostReqSetFileSizeOld(sf_g->map.root, &pReq->Info, hHostFile);
+                        if (RT_SUCCESS(vrc))
+                            vbsf_update_inode(pInode, sf_i, &pReq->Info.ObjInfo, sf_g, true /*fLocked*/);
+                    }
+                    if (RT_SUCCESS(vrc)) {
+                        /** @todo there is potentially more to be done here if there are mappings of
+                         *        the lovely file. */
+                    } else {
+                        rc = -RTErrConvertToErrno(vrc);
+                        LogFunc(("VbglR0SfHostReqSetFileSize(%s, %#llx) failed vrc=%Rrc rc=%d\n",
+                                 sf_i->path->String.ach, (unsigned long long)iattr->ia_size, vrc, rc));
+                    }
+                }
+
+                /*
+                 * Clean up.
+                 */
+                if (!pHandle) {
+                    vrc = VbglR0SfHostReqClose(sf_g->map.root, &pReq->Close, hHostFile);
+                    if (RT_FAILURE(vrc))
+                        LogFunc(("VbglR0SfHostReqClose(%s [%#llx]) failed vrc=%Rrc\n", sf_i->path->String.utf8, hHostFile, vrc));
+                }
+            }
+            if (pReq)
+                VbglR0PhysHeapFree(pReq);
+            if (pHandle)
+                vbsf_handle_release(pHandle, sf_g, "vbsf_inode_setattr");
+        } else
+            SFLOGFLOW(("vbsf_inode_setattr: Notthing to do here (%#x).\n", iattr->ia_valid));
     }
-
-    RT_ZERO(pReq->Create.CreateParms);
-    pReq->Create.CreateParms.Handle      = SHFL_HANDLE_NIL;
-    pReq->Create.CreateParms.CreateFlags = SHFL_CF_ACT_OPEN_IF_EXISTS
-                                         | SHFL_CF_ACT_FAIL_IF_NEW
-                                         | SHFL_CF_ACCESS_ATTR_WRITE;
-
-    /* this is at least required for Posix hosts */
-    if (iattr->ia_valid & ATTR_SIZE)
-        pReq->Create.CreateParms.CreateFlags |= SHFL_CF_ACCESS_WRITE;
-
-    memcpy(&pReq->Create.StrPath, sf_i->path, SHFLSTRING_HEADER_SIZE + sf_i->path->u16Size);
-    vrc = VbglR0SfHostReqCreate(sf_g->map.root, &pReq->Create);
-    if (RT_SUCCESS(vrc)) {
-        hHostFile = pReq->Create.CreateParms.Handle;
-    } else {
-        err = -RTErrConvertToErrno(vrc);
-        LogFunc(("VbglR0SfCreate(%s) failed vrc=%Rrc err=%d\n", sf_i->path->String.ach, vrc, err));
-        goto fail2;
-    }
-    if (pReq->Create.CreateParms.Result != SHFL_FILE_EXISTS) {
-        LogFunc(("file %s does not exist\n", sf_i->path->String.utf8));
-        err = -ENOENT;
-        goto fail1;
-    }
-
-    /* Setting the file size and setting the other attributes has to be
-     * handled separately, see implementation of vbsfSetFSInfo() in
-     * vbsf.cpp */
-    if (iattr->ia_valid & (ATTR_MODE | ATTR_ATIME | ATTR_MTIME)) {
-        RT_ZERO(pReq->Info.ObjInfo);
-
-        if (iattr->ia_valid & ATTR_MODE) {
-            pReq->Info.ObjInfo.Attr.fMode = sf_access_permissions_to_vbox(iattr->ia_mode);
-            if (iattr->ia_mode & S_IFDIR)
-                pReq->Info.ObjInfo.Attr.fMode |= RTFS_TYPE_DIRECTORY;
-            else if (iattr->ia_mode & S_IFLNK)
-                pReq->Info.ObjInfo.Attr.fMode |= RTFS_TYPE_SYMLINK;
-            else
-                pReq->Info.ObjInfo.Attr.fMode |= RTFS_TYPE_FILE;
-        }
-
-        if (iattr->ia_valid & ATTR_ATIME)
-            vbsf_time_to_vbox(&pReq->Info.ObjInfo.AccessTime, &iattr->ia_atime);
-        if (iattr->ia_valid & ATTR_MTIME)
-            vbsf_time_to_vbox(&pReq->Info.ObjInfo.ModificationTime, &iattr->ia_mtime);
-        /* ignore ctime (inode change time) as it can't be set from userland anyway */
-
-        vrc = VbglR0SfHostReqSetObjInfo(sf_g->map.root, &pReq->Info, hHostFile);
-        if (RT_FAILURE(vrc)) {
-            err = -RTErrConvertToErrno(vrc);
-            LogFunc(("VbglR0SfHostReqSetObjInfo(%s) failed vrc=%Rrc err=%d\n", sf_i->path->String.ach, vrc, err));
-            goto fail1;
-        }
-    }
-
-    if (iattr->ia_valid & ATTR_SIZE) {
-        vrc = VbglR0SfHostReqSetFileSize(sf_g->map.root, &pReq->SetSize, hHostFile, iattr->ia_size);
-        /** @todo Implement fallback if host is < 6.0? */
-        if (RT_FAILURE(vrc)) {
-            err = -RTErrConvertToErrno(vrc);
-            LogFunc(("VbglR0SfHostReqSetFileSize(%s, %#llx) failed vrc=%Rrc err=%d\n",
-                     sf_i->path->String.ach, (unsigned long long)iattr->ia_size, vrc, err));
-            goto fail1;
-        }
-    }
-
-    vrc = VbglR0SfHostReqClose(sf_g->map.root, &pReq->Close, hHostFile);
-    if (RT_FAILURE(vrc))
-        LogFunc(("VbglR0SfHostReqClose(%s [%#llx]) failed vrc=%Rrc\n", sf_i->path->String.utf8, hHostFile, vrc));
-    VbglR0PhysHeapFree(pReq);
-
-    /** @todo r=bird: I guess we're calling revalidate here to update the inode
-     * info.  However, due to the TTL optimization this is not guarenteed to happen.
-     *
-     * Also, we already have accurate stat information on the file, either from the
-     * SHFL_FN_CREATE call or from SHFL_FN_INFORMATION, so there is no need to do a
-     * slow stat()-like operation to retrieve the information again.
-     *
-     * What's more, given that the SHFL_FN_CREATE call succeeded, we know that the
-     * dentry and all its parent entries are valid and could touch their timestamps
-     * extending their TTL (CIFS does that). */
-    return vbsf_inode_revalidate_worker(dentry, true /*fForced*/);
-
- fail1:
-    vrc = VbglR0SfHostReqClose(sf_g->map.root, &pReq->Close, hHostFile);
-    if (RT_FAILURE(vrc))
-        LogFunc(("VbglR0SfHostReqClose(%s [%#llx]) failed vrc=%Rrc; err=%d\n", sf_i->path->String.utf8, hHostFile, vrc, err));
-
- fail2:
-    VbglR0PhysHeapFree(pReq);
-    return err;
+    return rc;
 }
 
-#endif /* >= 2.6.0 */
 
 static int vbsf_make_path(const char *caller, struct vbsf_inode_info *sf_i,
                           const char *d_name, size_t d_len, SHFLSTRING **result)
@@ -740,6 +823,7 @@ static int vbsf_make_path(const char *caller, struct vbsf_inode_info *sf_i,
     *result = tmp;
     return 0;
 }
+
 
 /**
  * [dentry] contains string encoded in coding system that corresponds
@@ -825,65 +909,13 @@ int vbsf_path_from_dentry(const char *caller, struct vbsf_super_info *sf_g, stru
     return err;
 }
 
-int vbsf_nlscpy(struct vbsf_super_info *sf_g, char *name, size_t name_bound_len, const unsigned char *utf8_name, size_t utf8_len)
-{
-    if (sf_g->nls) {
-        const char *in;
-        char *out;
-        size_t out_len;
-        size_t out_bound_len;
-        size_t in_bound_len;
-
-        in = utf8_name;
-        in_bound_len = utf8_len;
-
-        out = name;
-        out_len = 0;
-        out_bound_len = name_bound_len;
-
-        while (in_bound_len) {
-            int nb;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
-            unicode_t uni;
-
-            nb = utf8_to_utf32(in, in_bound_len, &uni);
-#else
-            linux_wchar_t uni;
-
-            nb = utf8_mbtowc(&uni, in, in_bound_len);
-#endif
-            if (nb < 0) {
-                LogFunc(("utf8_mbtowc failed(%s) %x:%d\n", (const char *)utf8_name, *in, in_bound_len));
-                return -EINVAL;
-            }
-            in += nb;
-            in_bound_len -= nb;
-
-            nb = sf_g->nls->uni2char(uni, out, out_bound_len);
-            if (nb < 0) {
-                LogFunc(("nls->uni2char failed(%s) %x:%d\n", utf8_name, uni, out_bound_len));
-                return nb;
-            }
-            out += nb;
-            out_bound_len -= nb;
-            out_len += nb;
-        }
-
-        *out = 0;
-    } else {
-        if (utf8_len + 1 > name_bound_len)
-            return -ENAMETOOLONG;
-
-        memcpy(name, utf8_name, utf8_len + 1);
-    }
-    return 0;
-}
-
 
 /**
  * This is called during name resolution/lookup to check if the @a dentry in the
  * cache is still valid.  The actual validation is job is handled by
  * vbsf_inode_revalidate_worker().
+ *
+ * @note Caller holds no relevant locks, just a dentry reference.
  */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
 static int vbsf_dentry_revalidate(struct dentry *dentry, unsigned flags)
@@ -937,7 +969,7 @@ static int vbsf_dentry_revalidate(struct dentry *dentry, int flags)
             if (cJiffiesAge < sf_g->ttl) {
                 SFLOGFLOW(("vbsf_dentry_revalidate: age: %lu vs. TTL %lu -> 1\n", cJiffiesAge, sf_g->ttl));
                 rc = 1;
-            } else if (!vbsf_inode_revalidate_worker(dentry, true /*fForced*/)) {
+            } else if (!vbsf_inode_revalidate_worker(dentry, true /*fForced*/, false /*fInodeLocked*/)) {
                 vbsf_dentry_set_update_jiffies(dentry, jiffies); /** @todo get jiffies from inode. */
                 SFLOGFLOW(("vbsf_dentry_revalidate: age: %lu vs. TTL %lu -> reval -> 1\n", cJiffiesAge, sf_g->ttl));
                 rc = 1;

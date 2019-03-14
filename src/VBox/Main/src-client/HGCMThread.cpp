@@ -1,4 +1,4 @@
-/* $Id: HGCMThread.cpp 77191 2019-02-06 21:14:23Z vboxsync $ */
+/* $Id: HGCMThread.cpp 77554 2019-03-04 11:11:00Z vboxsync $ */
 /** @file
  * HGCMThread - Host-Guest Communication Manager Threads
  */
