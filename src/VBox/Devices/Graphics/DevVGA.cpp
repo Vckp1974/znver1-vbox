@@ -1,4 +1,4 @@
-/* $Id: DevVGA.cpp 77206 2019-02-07 22:15:01Z vboxsync $ */
+/* $Id: DevVGA.cpp 77289 2019-02-12 16:53:39Z vboxsync $ */
 /** @file
  * DevVGA - VBox VGA/VESA device.
  */
@@ -4836,13 +4836,23 @@ static DECLCALLBACK(int) vgaPortUpdateDisplayAll(PPDMIDISPLAYPORT pInterface, bo
  * @returns VBox status code.
  * @param   pInterface          Pointer to this interface.
  * @param   cMilliesInterval    Number of millis between two refreshes.
- * @see     PDMIKEYBOARDPORT::pfnSetRefreshRate() for details.
+ * @see     PDMIDISPLAYPORT::pfnSetRefreshRate() for details.
  */
 static DECLCALLBACK(int) vgaPortSetRefreshRate(PPDMIDISPLAYPORT pInterface, uint32_t cMilliesInterval)
 {
     PVGASTATE pThis = IDISPLAYPORT_2_VGASTATE(pInterface);
 
-    pThis->cMilliesRefreshInterval = cMilliesInterval;
+    /*
+     * Update the interval, notify the VMSVGA FIFO thread if sleeping,
+     * then restart or stop the timer.
+     */
+    ASMAtomicWriteU32(&pThis->cMilliesRefreshInterval, cMilliesInterval);
+
+#ifdef VBOX_WITH_VMSVGA
+    if (pThis->svga.fFIFOThreadSleeping)
+        SUPSemEventSignal(pThis->svga.pSupDrvSession, pThis->svga.FIFORequestSem);
+#endif
+
     if (cMilliesInterval)
         return TMTimerSetMillies(pThis->RefreshTimer, cMilliesInterval);
     return TMTimerStop(pThis->RefreshTimer);
@@ -5426,6 +5436,15 @@ static DECLCALLBACK(void) vgaTimerRefresh(PPDMDEVINS pDevIns, PTMTIMER pTimer, v
 
 #ifdef VBOX_WITH_CRHGSMI
     vboxCmdVBVATimerRefresh(pThis);
+#endif
+
+#ifdef VBOX_WITH_VMSVGA
+    /*
+     * Call the VMSVGA FIFO poller/watchdog so we can wake up the thread if
+     * there is work to be done.
+     */
+    if (pThis->svga.fFIFOThreadSleeping && pThis->svga.fEnabled && pThis->svga.fConfigured)
+        vmsvgaFIFOWatchdogTimer(pThis);
 #endif
 }
 

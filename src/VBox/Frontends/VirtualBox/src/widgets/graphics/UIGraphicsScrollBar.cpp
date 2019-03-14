@@ -1,4 +1,4 @@
-/* $Id: UIGraphicsScrollBar.cpp 77268 2019-02-11 16:40:49Z vboxsync $ */
+/* $Id: UIGraphicsScrollBar.cpp 77290 2019-02-12 18:56:16Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIGraphicsScrollBar class implementation.
  */
@@ -47,7 +47,7 @@ signals:
 public:
 
     /** Constructs graphics scroll-bar token passing @a pParent to the base-class. */
-    UIGraphicsScrollBarToken(QIGraphicsWidget *pParent = 0);
+    UIGraphicsScrollBarToken(Qt::Orientation enmOrientation, QIGraphicsWidget *pParent = 0);
 
     /** Returns minimum size-hint. */
     virtual QSizeF minimumSizeHint() const /* override */;
@@ -77,6 +77,9 @@ private:
     /** Updates scroll-bar extent value. */
     void updateExtent();
 
+    /** Holds the orientation. */
+    const Qt::Orientation  m_enmOrientation;
+
     /** Holds the scroll-bar extent. */
     int  m_iExtent;
 
@@ -89,8 +92,9 @@ private:
 *   Class UIGraphicsScrollBarToken implementation.                                                                               *
 *********************************************************************************************************************************/
 
-UIGraphicsScrollBarToken::UIGraphicsScrollBarToken(QIGraphicsWidget *pParent /* = 0 */)
+UIGraphicsScrollBarToken::UIGraphicsScrollBarToken(Qt::Orientation enmOrientation, QIGraphicsWidget *pParent /* = 0 */)
     : QIGraphicsWidget(pParent)
+    , m_enmOrientation(enmOrientation)
     , m_fHovered(false)
 {
     prepare();
@@ -98,7 +102,20 @@ UIGraphicsScrollBarToken::UIGraphicsScrollBarToken(QIGraphicsWidget *pParent /* 
 
 QSizeF UIGraphicsScrollBarToken::minimumSizeHint() const
 {
-    return QSizeF(m_iExtent, m_iExtent);
+    /* Calculate minimum size-hint depending on orientation: */
+    switch (m_enmOrientation)
+    {
+#ifdef VBOX_WS_MAC
+        case Qt::Horizontal: return QSizeF(2 * m_iExtent, m_iExtent);
+        case Qt::Vertical:   return QSizeF(m_iExtent, 2 * m_iExtent);
+#else
+        case Qt::Horizontal: return QSizeF(m_iExtent, m_iExtent);
+        case Qt::Vertical:   return QSizeF(m_iExtent, m_iExtent);
+#endif
+    }
+
+    /* Call to base-class: */
+    return QIGraphicsWidget::minimumSizeHint();
 }
 
 void UIGraphicsScrollBarToken::paint(QPainter *pPainter, const QStyleOptionGraphicsItem *pOptions, QWidget *)
@@ -109,9 +126,30 @@ void UIGraphicsScrollBarToken::paint(QPainter *pPainter, const QStyleOptionGraph
     /* Prepare color: */
     const QPalette pal = palette();
 
+#ifdef VBOX_WS_MAC
+
+    /* Draw background: */
+    QColor backgroundColor = pal.color(QPalette::Active, QPalette::Mid);
+    backgroundColor = backgroundColor.darker(140);
+    QRectF actualRectangle = pOptions->rect;
+    actualRectangle.setLeft(pOptions->rect.left() + .22 * pOptions->rect.width());
+    actualRectangle.setRight(pOptions->rect.right() - .22 * pOptions->rect.width());
+    const double dRadius = actualRectangle.width() / 2;
+    QPainterPath painterPath = QPainterPath(QPoint(actualRectangle.x(), actualRectangle.y() + dRadius));
+    painterPath.arcTo(QRectF(actualRectangle.x(), actualRectangle.y(), 2 * dRadius, 2 * dRadius), 180, -180);
+    painterPath.lineTo(actualRectangle.x() + 2 * dRadius, actualRectangle.y() + actualRectangle.height() - dRadius);
+    painterPath.arcTo(QRectF(actualRectangle.x(), actualRectangle.y() + actualRectangle.height() - 2 * dRadius, 2 * dRadius, 2 * dRadius), 0, -180);
+    painterPath.closeSubpath();
+    pPainter->setClipPath(painterPath);
+    pPainter->fillRect(actualRectangle, backgroundColor);
+
+#else
+
     /* Draw background: */
     QColor backgroundColor = pal.color(QPalette::Active, QPalette::Window);
     pPainter->fillRect(pOptions->rect, backgroundColor);
+
+#endif
 
     /* Restore painter: */
     pPainter->restore();
@@ -179,7 +217,13 @@ UIGraphicsScrollBar::UIGraphicsScrollBar(Qt::Orientation enmOrientation, QGraphi
     , m_fHovered(false)
     , m_iHoverOnTimerId(0)
     , m_iHoverOffTimerId(0)
-    , m_iAnimatedValue(0)
+    , m_iHoveringValue(0)
+#ifdef VBOX_WS_MAC
+    , m_fRevealed(false)
+    , m_iRevealingValue(0)
+    , m_iRevealOnTimerId(0)
+    , m_iRevealOffTimerId(0)
+#endif
 {
     pScene->addItem(this);
     prepare();
@@ -199,7 +243,13 @@ UIGraphicsScrollBar::UIGraphicsScrollBar(Qt::Orientation enmOrientation, QIGraph
     , m_fHovered(false)
     , m_iHoverOnTimerId(0)
     , m_iHoverOffTimerId(0)
-    , m_iAnimatedValue(0)
+    , m_iHoveringValue(0)
+#ifdef VBOX_WS_MAC
+    , m_fRevealed(false)
+    , m_iRevealingValue(0)
+    , m_iRevealOnTimerId(0)
+    , m_iRevealOffTimerId(0)
+#endif
 {
     prepare();
 }
@@ -368,6 +418,36 @@ void UIGraphicsScrollBar::timerEvent(QTimerEvent *pEvent)
         /* Update in any case: */
         update();
     }
+
+#ifdef VBOX_WS_MAC
+
+    else
+
+    /* If that is reveal-in timer: */
+    if (m_iRevealOnTimerId != 0 && iTimerId == m_iRevealOnTimerId)
+    {
+        /* Wait for timer no more: */
+        m_iRevealOnTimerId = 0;
+    }
+
+    else
+
+    /* If that is reveal-out timer: */
+    if (m_iRevealOffTimerId != 0 && iTimerId == m_iRevealOffTimerId)
+    {
+        /* Wait for timer no more: */
+        m_iRevealOffTimerId = 0;
+        /* Emit reveal-out signal if not hovered or was reinvoked not long time ago: */
+        if (!m_fHovered && !m_pToken->isHovered() && m_iRevealOnTimerId == 0)
+            emit sigRevealLeave();
+        /* Restart timer otherwise: */
+        else
+            m_iRevealOffTimerId = startTimer(2000);
+        /* Update in any case: */
+        update();
+    }
+
+#endif
 }
 
 void UIGraphicsScrollBar::sltButton1Clicked()
@@ -391,7 +471,7 @@ void UIGraphicsScrollBar::sltTokenMoved(const QPointF &pos)
             /* We have to calculate the X coord of the token, leaving Y untouched: */
 #ifdef VBOX_WS_MAC
             const int iMin = 0;
-            const int iMax = size().width() - m_iExtent;
+            const int iMax = size().width() - 2 * m_iExtent;
 #else
             const int iMin = m_iExtent;
             const int iMax = size().width() - 2 * m_iExtent;
@@ -408,7 +488,7 @@ void UIGraphicsScrollBar::sltTokenMoved(const QPointF &pos)
             /* We have to calculate the Y coord of the token, leaving X untouched: */
 #ifdef VBOX_WS_MAC
             const int iMin = 0;
-            const int iMax = size().height() - m_iExtent;
+            const int iMax = size().height() - 2 * m_iExtent;
 #else
             const int iMin = m_iExtent;
             const int iMax = size().height() - 2 * m_iExtent;
@@ -467,6 +547,36 @@ void UIGraphicsScrollBar::sltStateEnteredHovered()
     if (m_pToken)
         m_pToken->show();
 }
+
+#ifdef VBOX_WS_MAC
+void UIGraphicsScrollBar::sltHandleRevealingStart()
+{
+    /* Only if not yet revealed, that way we
+     * make sure trigger emitted just once: */
+    if (!m_fRevealed)
+    {
+        /* Mark token revealed: */
+        m_fRevealed = true;
+        /* Emit reveal signal immediately: */
+        emit sigRevealEnter();
+    }
+
+    /* Restart fresh sustain timer: */
+    m_iRevealOnTimerId = startTimer(1000);
+}
+
+void UIGraphicsScrollBar::sltStateEnteredFaded()
+{
+    /* Mark token faded: */
+    m_fRevealed = false;
+}
+
+void UIGraphicsScrollBar::sltStateEnteredRevealed()
+{
+    /* Start reveal-out timer: */
+    m_iRevealOffTimerId = startTimer(2000);
+}
+#endif /* VBOX_WS_MAC */
 
 void UIGraphicsScrollBar::prepare()
 {
@@ -532,13 +642,21 @@ void UIGraphicsScrollBar::prepareButtons()
 void UIGraphicsScrollBar::prepareToken()
 {
     /* Create token: */
-    m_pToken = new UIGraphicsScrollBarToken(this);
+    m_pToken = new UIGraphicsScrollBarToken(m_enmOrientation, this);
     if (m_pToken)
         connect(m_pToken, &UIGraphicsScrollBarToken::sigMouseMoved,
                 this, &UIGraphicsScrollBar::sltTokenMoved);
 }
 
 void UIGraphicsScrollBar::prepareAnimation()
+{
+    prepareHoveringAnimation();
+#ifdef VBOX_WS_MAC
+    prepareRevealingAnimation();
+#endif
+}
+
+void UIGraphicsScrollBar::prepareHoveringAnimation()
 {
     /* Create hovering animation machine: */
     QStateMachine *pHoveringMachine = new QStateMachine(this);
@@ -552,8 +670,8 @@ void UIGraphicsScrollBar::prepareAnimation()
         /* Configure 'default' state: */
         if (pStateDefault)
         {
-            /* When we entering default state => we assigning animatedValue to 0: */
-            pStateDefault->assignProperty(this, "animatedValue", 0);
+            /* When we entering default state => we assigning hoveringValue to 0: */
+            pStateDefault->assignProperty(this, "hoveringValue", 0);
             connect(pStateDefault, &QState::propertiesAssigned, this, &UIGraphicsScrollBar::sltStateEnteredDefault);
 
             /* Add state transitions: */
@@ -563,7 +681,7 @@ void UIGraphicsScrollBar::prepareAnimation()
                 connect(pDefaultToHovered, &QSignalTransition::triggered, this, &UIGraphicsScrollBar::sltStateLeftDefault);
 
                 /* Create forward animation: */
-                QPropertyAnimation *pHoveringAnimationForward = new QPropertyAnimation(this, "animatedValue", this);
+                QPropertyAnimation *pHoveringAnimationForward = new QPropertyAnimation(this, "hoveringValue", this);
                 if (pHoveringAnimationForward)
                 {
                     pHoveringAnimationForward->setDuration(200);
@@ -579,8 +697,8 @@ void UIGraphicsScrollBar::prepareAnimation()
         /* Configure 'hovered' state: */
         if (pStateHovered)
         {
-            /* When we entering hovered state => we assigning animatedValue to 100: */
-            pStateHovered->assignProperty(this, "animatedValue", 100);
+            /* When we entering hovered state => we assigning hoveringValue to 100: */
+            pStateHovered->assignProperty(this, "hoveringValue", 100);
             connect(pStateHovered, &QState::propertiesAssigned, this, &UIGraphicsScrollBar::sltStateEnteredHovered);
 
             /* Add state transitions: */
@@ -590,7 +708,7 @@ void UIGraphicsScrollBar::prepareAnimation()
                 connect(pHoveredToDefault, &QSignalTransition::triggered, this, &UIGraphicsScrollBar::sltStateLeftHovered);
 
                 /* Create backward animation: */
-                QPropertyAnimation *pHoveringAnimationBackward = new QPropertyAnimation(this, "animatedValue", this);
+                QPropertyAnimation *pHoveringAnimationBackward = new QPropertyAnimation(this, "hoveringValue", this);
                 if (pHoveringAnimationBackward)
                 {
                     pHoveringAnimationBackward->setDuration(200);
@@ -609,6 +727,79 @@ void UIGraphicsScrollBar::prepareAnimation()
         pHoveringMachine->start();
     }
 }
+
+#ifdef VBOX_WS_MAC
+void UIGraphicsScrollBar::prepareRevealingAnimation()
+{
+    /* Create revealing animation machine: */
+    QStateMachine *pRevealingMachine = new QStateMachine(this);
+    if (pRevealingMachine)
+    {
+        /* Create 'faded' state: */
+        QState *pStateFaded = new QState(pRevealingMachine);
+        /* Create 'revealed' state: */
+        QState *pStateRevealed = new QState(pRevealingMachine);
+
+        /* Configure 'faded' state: */
+        if (pStateFaded)
+        {
+            /* When we entering fade state => we assigning revealingValue to 0: */
+            pStateFaded->assignProperty(this, "revealingValue", 0);
+            connect(pStateFaded, &QState::propertiesAssigned, this, &UIGraphicsScrollBar::sltStateEnteredFaded);
+
+            /* Add state transitions: */
+            QSignalTransition *pFadeToRevealed = pStateFaded->addTransition(this, SIGNAL(sigRevealEnter()), pStateRevealed);
+            if (pFadeToRevealed)
+            {
+                /* Create forward animation: */
+                QPropertyAnimation *pRevealingAnimationForward = new QPropertyAnimation(this, "revealingValue", this);
+                if (pRevealingAnimationForward)
+                {
+                    pRevealingAnimationForward->setDuration(200);
+                    pRevealingAnimationForward->setStartValue(0);
+                    pRevealingAnimationForward->setEndValue(100);
+
+                    /* Add to transition: */
+                    pFadeToRevealed->addAnimation(pRevealingAnimationForward);
+                }
+            }
+        }
+
+        /* Configure 'revealed' state: */
+        if (pStateRevealed)
+        {
+            /* When we entering revealed state => we assigning revealingValue to 100: */
+            pStateRevealed->assignProperty(this, "revealingValue", 100);
+            connect(pStateRevealed, &QState::propertiesAssigned, this, &UIGraphicsScrollBar::sltStateEnteredRevealed);
+
+            /* Add state transitions: */
+            QSignalTransition *pRevealedToFaded = pStateRevealed->addTransition(this, SIGNAL(sigRevealLeave()), pStateFaded);
+            if (pRevealedToFaded)
+            {
+                /* Create backward animation: */
+                QPropertyAnimation *pRevealingAnimationBackward = new QPropertyAnimation(this, "revealingValue", this);
+                if (pRevealingAnimationBackward)
+                {
+                    pRevealingAnimationBackward->setDuration(200);
+                    pRevealingAnimationBackward->setStartValue(100);
+                    pRevealingAnimationBackward->setEndValue(0);
+
+                    /* Add to transition: */
+                    pRevealedToFaded->addAnimation(pRevealingAnimationBackward);
+                }
+            }
+        }
+
+        /* Initial state is 'fade': */
+        pRevealingMachine->setInitialState(pStateFaded);
+        /* Start state-machine: */
+        pRevealingMachine->start();
+    }
+
+    /* Install self-listener: */
+    connect(this, &UIGraphicsScrollBar::sigValueChanged, this, &UIGraphicsScrollBar::sltHandleRevealingStart);
+}
+#endif /* VBOX_WS_MAC */
 
 void UIGraphicsScrollBar::updateExtent()
 {
@@ -667,7 +858,7 @@ QPoint UIGraphicsScrollBar::actualTokenPosition() const
             /* We have to adjust the X coord of the token, leaving Y unchanged: */
 #ifdef VBOX_WS_MAC
             const int iMin = 0;
-            const int iMax = size().width() - m_iExtent;
+            const int iMax = size().width() - 2 * m_iExtent;
 #else
             const int iMin = m_iExtent;
             const int iMax = size().width() - 2 * m_iExtent;
@@ -681,7 +872,7 @@ QPoint UIGraphicsScrollBar::actualTokenPosition() const
             /* We have to adjust the Y coord of the token, leaving X unchanged: */
 #ifdef VBOX_WS_MAC
             const int iMin = 0;
-            const int iMax = size().height() - m_iExtent;
+            const int iMax = size().height() - 2 * m_iExtent;
 #else
             const int iMin = m_iExtent;
             const int iMax = size().height() - 2 * m_iExtent;
@@ -704,22 +895,64 @@ void UIGraphicsScrollBar::paintBackground(QPainter *pPainter, const QRect &recta
     /* Prepare color: */
     const QPalette pal = palette();
 
+#ifdef VBOX_WS_MAC
+
+    /* Draw background if necessary: */
+    pPainter->save();
+    QColor windowColor = pal.color(QPalette::Active, QPalette::Window);
+    windowColor.setAlpha(255 * ((double)m_iHoveringValue / 100));
+    pPainter->fillRect(rectangle, windowColor);
+    pPainter->restore();
+
+    /* Draw frame if necessary: */
+    pPainter->save();
+    QColor frameColor = pal.color(QPalette::Active, QPalette::Window);
+    frameColor.setAlpha(255 * ((double)m_iHoveringValue / 100));
+    frameColor = frameColor.darker(120);
+    pPainter->setPen(frameColor);
+    pPainter->drawLine(rectangle.topLeft(), rectangle.bottomLeft());
+    pPainter->restore();
+
+    /* Emulate token when necessary: */
+    if (m_iHoveringValue < 100)
+    {
+        QColor tokenColor = pal.color(QPalette::Active, QPalette::Mid);
+        tokenColor.setAlpha(255 * ((double)m_iRevealingValue / 100));
+        tokenColor = tokenColor.darker(140);
+        QRectF tokenRectangle = QRect(actualTokenPosition(), QSize(m_iExtent, 2 * m_iExtent));
+        QRectF actualRectangle = tokenRectangle;
+        actualRectangle.setLeft(tokenRectangle.left() + .22 * tokenRectangle.width() + .22 * tokenRectangle.width() * ((double)100 - m_iHoveringValue) / 100);
+        actualRectangle.setRight(tokenRectangle.right() - .22 * tokenRectangle.width() + .22 * tokenRectangle.width() * ((double)100 - m_iHoveringValue) / 100 - 1);
+        const double dRadius = actualRectangle.width() / 2;
+        QPainterPath painterPath = QPainterPath(QPoint(actualRectangle.x(), actualRectangle.y() + dRadius));
+        painterPath.arcTo(QRectF(actualRectangle.x(), actualRectangle.y(), 2 * dRadius, 2 * dRadius), 180, -180);
+        painterPath.lineTo(actualRectangle.x() + 2 * dRadius, actualRectangle.y() + actualRectangle.height() - dRadius);
+        painterPath.arcTo(QRectF(actualRectangle.x(), actualRectangle.y() + actualRectangle.height() - 2 * dRadius, 2 * dRadius, 2 * dRadius), 0, -180);
+        painterPath.closeSubpath();
+        pPainter->setClipPath(painterPath);
+        pPainter->fillRect(actualRectangle, tokenColor);
+    }
+
+#else
+
     /* Draw background: */
     QColor backgroundColor = pal.color(QPalette::Active, QPalette::Mid);
     backgroundColor.setAlpha(200);
     QRect actualRectangle = rectangle;
-    actualRectangle.setLeft(actualRectangle.left() + .9 * actualRectangle.width() * ((double)100 - m_iAnimatedValue) / 100);
+    actualRectangle.setLeft(actualRectangle.left() + .9 * actualRectangle.width() * ((double)100 - m_iHoveringValue) / 100);
     pPainter->fillRect(actualRectangle, backgroundColor);
 
     /* Emulate token when necessary: */
-    if (m_iAnimatedValue < 100)
+    if (m_iHoveringValue < 100)
     {
         QColor tokenColor = pal.color(QPalette::Active, QPalette::Window);
         tokenColor.setAlpha(200);
         QRect tokenRectangle = QRect(actualTokenPosition(), QSize(m_iExtent, m_iExtent));
-        tokenRectangle.setLeft(tokenRectangle.left() + .9 * tokenRectangle.width() * ((double)100 - m_iAnimatedValue) / 100);
+        tokenRectangle.setLeft(tokenRectangle.left() + .9 * tokenRectangle.width() * ((double)100 - m_iHoveringValue) / 100);
         pPainter->fillRect(tokenRectangle, tokenColor);
     }
+
+#endif
 
     /* Restore painter: */
     pPainter->restore();
