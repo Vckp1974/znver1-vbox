@@ -1,4 +1,4 @@
-/* $Id: vbox_main.c 76940 2019-01-22 17:41:46Z vboxsync $ */
+/* $Id: vbox_main.c 76976 2019-01-24 14:30:53Z vboxsync $ */
 /** @file
  * VirtualBox Additions Linux kernel video driver
  */
@@ -67,7 +67,8 @@ void vbox_enable_accel(struct vbox_private *vbox)
 		if (vbox->vbva_info[i].pVBVA)
 			continue;
 
-		vbva = (void __force *)vbox->vbva_buffers + i * VBVA_MIN_BUFFER_SIZE;
+		vbva = (void __force *)vbox->vbva_buffers +
+			i * VBVA_MIN_BUFFER_SIZE;
 		if (!VBoxVBVAEnable(&vbox->vbva_info[i],
 				 vbox->guest_pool, vbva, i)) {
 			/* very old host or driver error. */
@@ -446,7 +447,11 @@ static void vbox_hw_fini(struct vbox_private *vbox)
 	pci_iounmap(vbox->dev->pdev, vbox->guest_heap);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 int vbox_driver_load(struct drm_device *dev, unsigned long flags)
+#else
+int vbox_driver_load(struct drm_device *dev)
+#endif
 {
 	struct vbox_private *vbox;
 	int ret = 0;
