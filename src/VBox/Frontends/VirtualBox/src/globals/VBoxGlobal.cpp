@@ -1,4 +1,4 @@
-/* $Id: VBoxGlobal.cpp 77359 2019-02-19 11:16:35Z vboxsync $ */
+/* $Id: VBoxGlobal.cpp 77377 2019-02-20 13:00:16Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBoxGlobal class implementation.
  */
@@ -2720,12 +2720,12 @@ QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QStrin
         strVisoSaveFolder = defaultFolderPathForType(UIMediumDeviceType_DVD);
 
     QWidget *pDialogParent = windowManager().realParentWindow(pParent);
-    QPointer<UIVisoCreator> pVisoCreator = new UIVisoCreator(pDialogParent, strMachineName);
+    UIVisoCreator *pVisoCreator = new UIVisoCreator(pDialogParent, strMachineName);
 
     if (!pVisoCreator)
         return QString();
     windowManager().registerNewParent(pVisoCreator, pDialogParent);
-    pVisoCreator->setCurrentPath(gEDataManager->recentFolderForVISOContent());
+    pVisoCreator->setCurrentPath(gEDataManager->visoCreatorRecentFolder());
 
     if (pVisoCreator->exec(false /* not application modal */))
     {
@@ -2735,9 +2735,12 @@ QUuid VBoxGlobal::createVisoMediumWithVisoCreator(QWidget *pParent, const QStrin
             strVisoName = strMachineName;
 
         if (files.empty() || files[0].isEmpty())
+        {
+            delete pVisoCreator;
             return QUuid();
+        }
 
-        gEDataManager->setRecentFolderForVISOContent(pVisoCreator->currentPath());
+        gEDataManager->setVISOCreatorRecentFolder(pVisoCreator->currentPath());
 
         /* Produce the VISO. */
         char szVisoPath[RTPATH_MAX];

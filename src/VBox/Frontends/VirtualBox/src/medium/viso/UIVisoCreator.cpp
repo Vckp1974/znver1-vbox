@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreator.cpp 77332 2019-02-15 12:21:41Z vboxsync $ */
+/* $Id: UIVisoCreator.cpp 77405 2019-02-20 20:39:07Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoCreator class implementation.
  */
@@ -23,6 +23,8 @@
 
 /* GUI includes: */
 #include "QIDialogButtonBox.h"
+#include "UIDesktopWidgetWatchdog.h"
+#include "UIExtraDataManager.h"
 #include "UIIconPool.h"
 #include "UIToolBar.h"
 #include "UIVisoHostBrowser.h"
@@ -30,7 +32,10 @@
 #include "UIVisoConfigurationPanel.h"
 #include "UIVisoCreatorOptionsPanel.h"
 #include "UIVisoContentBrowser.h"
-
+#include "VBoxGlobal.h"
+#ifdef VBOX_WS_MAC
+# include "VBoxUtils-darwin.h"
+#endif
 
 UIVisoCreator::UIVisoCreator(QWidget *pParent /* =0 */, const QString& strMachineName /* = QString() */)
     : QIWithRetranslateUI<QIMainDialog>(pParent)
@@ -54,6 +59,7 @@ UIVisoCreator::UIVisoCreator(QWidget *pParent /* =0 */, const QString& strMachin
     , m_pConfigurationPanel(0)
 {
     m_visoOptions.m_strVisoName = !strMachineName.isEmpty() ? strMachineName : "ad-hoc";
+    loadSettings();
     prepareActions();
     prepareWidgets();
     populateMenuMainToolbar();
@@ -64,6 +70,7 @@ UIVisoCreator::UIVisoCreator(QWidget *pParent /* =0 */, const QString& strMachin
 
 UIVisoCreator::~UIVisoCreator()
 {
+    saveSettings();
 }
 
 QStringList UIVisoCreator::entryList() const
@@ -136,7 +143,7 @@ void UIVisoCreator::retranslateUi()
     }
     if (m_pResetAction)
     {
-        m_pResetAction->setToolTip(QApplication::translate("UIVisoCreator", "Reset ISO content."));
+        m_pResetAction->setToolTip(QApplication::translate("UIVisoCreator", "Reset VISO content."));
         m_pResetAction->setText(QApplication::translate("UIVisoCreator", "Reset"));
     }
     if (m_pRenameAction)
@@ -215,6 +222,27 @@ void UIVisoCreator::sltHandleContentBrowserTableSelectionChanged(bool fIsSelecti
 {
     if (m_pRemoveAction)
         m_pRemoveAction->setEnabled(!fIsSelectionEmpty);
+}
+
+void UIVisoCreator::sltHandleShowContextMenu(const QWidget *pContextMenuRequester, const QPoint &point)
+{
+    if (!pContextMenuRequester)
+        return;
+
+    QMenu menu;
+
+    if (sender() == m_pHostBrowser)
+    {
+        menu.addAction(m_pAddAction);
+    }
+    else if (sender() == m_pVisoBrowser)
+    {
+        menu.addAction(m_pRemoveAction);
+        menu.addAction(m_pNewDirectoryAction);
+        menu.addAction(m_pResetAction);
+    }
+
+    menu.exec(pContextMenuRequester->mapToGlobal(point));
 }
 
 void UIVisoCreator::prepareWidgets()
@@ -317,11 +345,17 @@ void UIVisoCreator::prepareConnections()
                 this, &UIVisoCreator::sltHandleBrowserTreeViewVisibilityChanged);
         connect(m_pHostBrowser, &UIVisoHostBrowser::sigTableSelectionChanged,
                 this, &UIVisoCreator::sltHandleHostBrowserTableSelectionChanged);
+        connect(m_pHostBrowser, &UIVisoHostBrowser::sigCreateFileTableViewContextMenu,
+                this, &UIVisoCreator::sltHandleShowContextMenu);
     }
 
     if (m_pVisoBrowser)
+    {
         connect(m_pVisoBrowser, &UIVisoContentBrowser::sigTableSelectionChanged,
                 this, &UIVisoCreator::sltHandleContentBrowserTableSelectionChanged);
+        connect(m_pVisoBrowser, &UIVisoContentBrowser::sigCreateFileTableViewContextMenu,
+                this, &UIVisoCreator::sltHandleShowContextMenu);
+    }
 
     if (m_pButtonBox)
     {
@@ -538,4 +572,49 @@ void UIVisoCreator::prepareVerticalToolBar()
     m_pVerticalToolBar->addAction(m_pResetAction);
 
     m_pVerticalToolBar->addWidget(bottomSpacerWidget);
+}
+
+void UIVisoCreator::loadSettings()
+{
+    const QRect desktopRect = gpDesktop->availableGeometry(this);
+    int iDefaultWidth = desktopRect.width() / 2;
+    int iDefaultHeight = desktopRect.height() * 3 / 4;
+
+    QRect defaultGeometry(0, 0, iDefaultWidth, iDefaultHeight);
+    QWidget *pParent = qobject_cast<QWidget*>(parent());
+    if (pParent)
+        defaultGeometry.moveCenter(pParent->geometry().center());
+
+    /* Load geometry from extradata: */
+    QRect geometry = gEDataManager->visoCreatorDialogGeometry(this, defaultGeometry);
+    setDialogGeometry(geometry);
+}
+
+void UIVisoCreator::saveSettings() const
+{
+    /* Save window geometry to extradata: */
+    const QRect saveGeometry = geometry();
+#ifdef VBOX_WS_MAC
+    /* darwinIsWindowMaximized expects a non-const QWidget*. thus const_cast: */
+    QWidget *pw = const_cast<QWidget*>(qobject_cast<const QWidget*>(this));
+    gEDataManager->setVISOCreatorDialogGeometry(saveGeometry, ::darwinIsWindowMaximized(pw));
+#else /* !VBOX_WS_MAC */
+    gEDataManager->setVISOCreatorDialogGeometry(saveGeometry, isMaximized());
+#endif /* !VBOX_WS_MAC */
+}
+
+void UIVisoCreator::setDialogGeometry(const QRect &geometry)
+{
+#ifdef VBOX_WS_MAC
+    /* Use the old approach for OSX: */
+    move(geometry.topLeft());
+    resize(geometry.size());
+#else /* VBOX_WS_MAC */
+    /* Use the new approach for Windows/X11: */
+    VBoxGlobal::setTopLevelGeometry(this, geometry);
+#endif /* !VBOX_WS_MAC */
+
+    /* Maximize (if necessary): */
+    if (gEDataManager->visoCreatorDialogShouldBeMaximized())
+        showMaximized();
 }

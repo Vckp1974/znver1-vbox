@@ -1,4 +1,4 @@
-/* $Id: GuestFileImpl.cpp 77112 2019-02-01 11:23:33Z vboxsync $ */
+/* $Id: GuestFileImpl.cpp 77387 2019-02-20 14:20:19Z vboxsync $ */
 /** @file
  * VirtualBox Main - Guest file handling.
  */
@@ -155,9 +155,11 @@ int GuestFile::init(Console *pConsole, GuestSession *pSession,
     {
         mSession = pSession;
 
+        mData.mOpenInfo    = openInfo;
         mData.mInitialSize = 0;
-        mData.mStatus = FileStatus_Undefined;
-        mData.mOpenInfo = openInfo;
+        mData.mStatus      = FileStatus_Undefined;
+        mData.mLastError   = VINF_SUCCESS;
+        mData.mOffCurrent  = 0;
 
         unconst(mEventSource).createObject();
         HRESULT hr = mEventSource->init();
@@ -1129,7 +1131,7 @@ int GuestFile::i_waitForWrite(GuestWaitEvent *pEvent,
     return vrc;
 }
 
-int GuestFile::i_writeData(uint32_t uTimeoutMS, void *pvData, uint32_t cbData,
+int GuestFile::i_writeData(uint32_t uTimeoutMS, const void *pvData, uint32_t cbData,
                            uint32_t *pcbWritten)
 {
     AssertPtrReturn(pvData, VERR_INVALID_POINTER);
@@ -1165,7 +1167,7 @@ int GuestFile::i_writeData(uint32_t uTimeoutMS, void *pvData, uint32_t cbData,
     HGCMSvcSetU32(&paParms[i++], pEvent->ContextID());
     HGCMSvcSetU32(&paParms[i++], mObjectID /* File handle */);
     HGCMSvcSetU32(&paParms[i++], cbData /* Size (in bytes) to write */);
-    HGCMSvcSetPv(&paParms[i++], pvData, cbData);
+    HGCMSvcSetPv (&paParms[i++], unconst(pvData), cbData);
 
     alock.release(); /* Drop write lock before sending. */
 
@@ -1193,7 +1195,7 @@ int GuestFile::i_writeData(uint32_t uTimeoutMS, void *pvData, uint32_t cbData,
 }
 
 int GuestFile::i_writeDataAt(uint64_t uOffset, uint32_t uTimeoutMS,
-                             void *pvData, uint32_t cbData, uint32_t *pcbWritten)
+                             const void *pvData, uint32_t cbData, uint32_t *pcbWritten)
 {
     AssertPtrReturn(pvData, VERR_INVALID_POINTER);
     AssertReturn(cbData, VERR_INVALID_PARAMETER);
@@ -1229,7 +1231,7 @@ int GuestFile::i_writeDataAt(uint64_t uOffset, uint32_t uTimeoutMS,
     HGCMSvcSetU32(&paParms[i++], mObjectID /* File handle */);
     HGCMSvcSetU64(&paParms[i++], uOffset /* Offset where to starting writing */);
     HGCMSvcSetU32(&paParms[i++], cbData /* Size (in bytes) to write */);
-    HGCMSvcSetPv(&paParms[i++], pvData, cbData);
+    HGCMSvcSetPv (&paParms[i++], unconst(pvData), cbData);
 
     alock.release(); /* Drop write lock before sending. */
 
@@ -1477,12 +1479,15 @@ HRESULT GuestFile::write(const std::vector<BYTE> &aData, ULONG aTimeoutMS, ULONG
     AutoCaller autoCaller(this);
     if (FAILED(autoCaller.rc())) return autoCaller.rc();
 
+    if (aData.size() == 0)
+        return setError(E_INVALIDARG, tr("No data to write specified"));
+
     LogFlowThisFuncEnter();
 
     HRESULT hr = S_OK;
 
-    uint32_t cbData = (uint32_t)aData.size();
-    void *pvData = cbData > 0? (void *)&aData.front(): NULL;
+    const uint32_t cbData = (uint32_t)aData.size();
+    const void *pvData = (void *)&aData.front();
     int vrc = i_writeData(aTimeoutMS, pvData, cbData, (uint32_t*)aWritten);
     if (RT_FAILURE(vrc))
         hr = setErrorBoth(VBOX_E_IPRT_ERROR, vrc, tr("Writing %zubytes to file \"%s\" failed: %Rrc"),
@@ -1497,12 +1502,15 @@ HRESULT GuestFile::writeAt(LONG64 aOffset, const std::vector<BYTE> &aData, ULONG
     AutoCaller autoCaller(this);
     if (FAILED(autoCaller.rc())) return autoCaller.rc();
 
+    if (aData.size() == 0)
+        return setError(E_INVALIDARG, tr("No data to write at specified"));
+
     LogFlowThisFuncEnter();
 
     HRESULT hr = S_OK;
 
-    uint32_t cbData = (uint32_t)aData.size();
-    void *pvData = cbData > 0? (void *)&aData.front(): NULL;
+    const uint32_t cbData = (uint32_t)aData.size();
+    const void *pvData = (void *)&aData.front();
     int vrc = i_writeData(aTimeoutMS, pvData, cbData, (uint32_t*)aWritten);
     if (RT_FAILURE(vrc))
         hr = setErrorBoth(VBOX_E_IPRT_ERROR, vrc, tr("Writing %zubytes to file \"%s\" (at offset %RU64) failed: %Rrc"),

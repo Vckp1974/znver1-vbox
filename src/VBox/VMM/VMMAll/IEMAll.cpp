@@ -1,4 +1,4 @@
-/* $Id: IEMAll.cpp 77357 2019-02-19 11:01:40Z vboxsync $ */
+/* $Id: IEMAll.cpp 77382 2019-02-20 13:44:22Z vboxsync $ */
 /** @file
  * IEM - Interpreted Execution Manager - All Contexts.
  */
@@ -14336,9 +14336,10 @@ VMMDECL(VBOXSTRICTRC)       IEMExecOneBypassWithPrefetchedByPCWritten(PVMCPU pVC
 }
 
 
-VMMDECL(VBOXSTRICTRC) IEMExecLots(PVMCPU pVCpu, uint32_t *pcInstructions)
+VMMDECL(VBOXSTRICTRC) IEMExecLots(PVMCPU pVCpu, uint32_t cMaxInstructions, uint32_t cPollRate, uint32_t *pcInstructions)
 {
     uint32_t const cInstructionsAtStart = pVCpu->iem.s.cInstructions;
+    AssertMsg(RT_IS_POWER_OF_TWO(cPollRate + 1), ("%#x\n", cPollRate));
 
     /*
      * See if there is an interrupt pending in TRPM, inject it if we can.
@@ -14399,8 +14400,8 @@ VMMDECL(VBOXSTRICTRC) IEMExecLots(PVMCPU pVCpu, uint32_t *pcInstructions)
             /*
              * The run loop.  We limit ourselves to 4096 instructions right now.
              */
-            PVM         pVM    = pVCpu->CTX_SUFF(pVM);
-            uint32_t    cInstr = 4096;
+            uint32_t cMaxInstructionsGccStupidity = cMaxInstructions;
+            PVM pVM = pVCpu->CTX_SUFF(pVM);
             for (;;)
             {
                 /*
@@ -14440,11 +14441,16 @@ VMMDECL(VBOXSTRICTRC) IEMExecLots(PVMCPU pVCpu, uint32_t *pcInstructions)
                                               && !pVCpu->cpum.GstCtx.rflags.Bits.u1IF) )
                                       && !VM_FF_IS_ANY_SET(pVM, VM_FF_ALL_MASK) ))
                         {
-                            if (cInstr-- > 0)
+                            if (cMaxInstructionsGccStupidity-- > 0)
                             {
-                                Assert(pVCpu->iem.s.cActiveMappings == 0);
-                                iemReInitDecoder(pVCpu);
-                                continue;
+                                /* Poll timers every now an then according to the caller's specs. */
+                                if (   (cMaxInstructionsGccStupidity & cPollRate) != 0
+                                    || !TMTimerPollBool(pVM, pVCpu))
+                                {
+                                    Assert(pVCpu->iem.s.cActiveMappings == 0);
+                                    iemReInitDecoder(pVCpu);
+                                    continue;
+                                }
                             }
                         }
                     }

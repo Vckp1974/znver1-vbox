@@ -1,4 +1,4 @@
-/* $Id: UIVisoCreator.h 77330 2019-02-15 11:04:00Z vboxsync $ */
+/* $Id: UIVisoCreator.h 77405 2019-02-20 20:39:07Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIVisoCreator class declaration.
  */
@@ -82,6 +82,7 @@ private slots:
     void sltHandleBrowserTreeViewVisibilityChanged(bool fVisible);
     void sltHandleHostBrowserTableSelectionChanged(bool fIsSelectionEmpty);
     void sltHandleContentBrowserTableSelectionChanged(bool fIsSelectionEmpty);
+    void sltHandleShowContextMenu(const QWidget *pContextMenuRequester, const QPoint &point);
 
 private:
     struct VisoOptions
@@ -120,6 +121,9 @@ private:
       *  - grab it from the dialog as soon as a panel becomes visible again
       *  - assign it to the most recently "unhidden" panel */
     void manageEscapeShortCut();
+    void loadSettings();
+    void saveSettings() const;
+    void setDialogGeometry(const QRect &geometry);
 
     QAction              *m_pActionConfiguration;
     QAction              *m_pActionOptions;

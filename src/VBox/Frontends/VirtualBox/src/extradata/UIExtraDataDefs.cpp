@@ -1,4 +1,4 @@
-/* $Id: UIExtraDataDefs.cpp 77014 2019-01-28 08:24:50Z vboxsync $ */
+/* $Id: UIExtraDataDefs.cpp 77377 2019-02-20 13:00:16Z vboxsync $ */
 /** @file
  * VBox Qt GUI - Extra-data related definitions.
  */
@@ -72,11 +72,13 @@ const char *UIExtraDataDefs::GUI_ProxySettings = "GUI/ProxySettings";
 const char *UIExtraDataDefs::GUI_RecentFolderHD = "GUI/RecentFolderHD";
 const char *UIExtraDataDefs::GUI_RecentFolderCD = "GUI/RecentFolderCD";
 const char *UIExtraDataDefs::GUI_RecentFolderFD = "GUI/RecentFolderFD";
-const char *UIExtraDataDefs::GUI_RecentFolderVISOContent = "GUI/RecentFolderVISOContent";
 const char *UIExtraDataDefs::GUI_RecentListHD = "GUI/RecentListHD";
 const char *UIExtraDataDefs::GUI_RecentListCD = "GUI/RecentListCD";
 const char *UIExtraDataDefs::GUI_RecentListFD = "GUI/RecentListFD";
 
+/* VISO Creator: */
+const char *UIExtraDataDefs::GUI_VISOCreator_RecentFolder   = "GUI/VISOCreator/RecentFolder";
+const char *UIExtraDataDefs::GUI_VISOCreator_DialogGeometry = "GUI/VISOCreator/DialogGeometry";
 
 /* VirtualBox Manager: */
 const char *UIExtraDataDefs::GUI_LastSelectorWindowPosition = "GUI/LastWindowPosition";
