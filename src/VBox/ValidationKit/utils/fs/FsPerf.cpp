@@ -1,4 +1,4 @@
-/* $Id: FsPerf.cpp 76903 2019-01-20 05:14:01Z vboxsync $ */
+/* $Id: FsPerf.cpp 76929 2019-01-21 19:43:00Z vboxsync $ */
 /** @file
  * FsPerf - File System (Shared Folders) Performance Benchmark.
  */
@@ -52,6 +52,14 @@
 
 #ifdef RT_OS_WINDOWS
 # include <iprt/nt/nt-and-windows.h>
+#else
+# include <errno.h>
+# include <unistd.h>
+# include <sys/types.h>
+# include <sys/fcntl.h>
+# ifndef RT_OS_OS2
+#  include <sys/mman.h>
+# endif
 #endif
 
 
@@ -68,24 +76,24 @@
         /* Estimate how many iterations we need to fill up the given timeslot: */ \
         fsPerfYield(); \
         uint64_t nsStart = RTTimeNanoTS(); \
-        uint64_t ns; \
+        uint64_t nsPrf; \
         do \
-            ns = RTTimeNanoTS(); \
-        while (ns == nsStart); \
-        nsStart = ns; \
+            nsPrf = RTTimeNanoTS(); \
+        while (nsPrf == nsStart); \
+        nsStart = nsPrf; \
         \
         uint64_t iIteration = 0; \
         do \
         { \
             RTTESTI_CHECK_RC(a_fnCall, VINF_SUCCESS); \
             iIteration++; \
-            ns = RTTimeNanoTS() - nsStart; \
-        } while (ns < RT_NS_10MS || (iIteration & 1)); \
-        ns /= iIteration; \
-        if (ns > g_nsPerNanoTSCall + 32) \
-            ns -= g_nsPerNanoTSCall; \
+            nsPrf = RTTimeNanoTS() - nsStart; \
+        } while (nsPrf < RT_NS_10MS || (iIteration & 1)); \
+        nsPrf /= iIteration; \
+        if (nsPrf > g_nsPerNanoTSCall + 32) \
+            nsPrf -= g_nsPerNanoTSCall; \
         \
-        uint64_t cIterations = (a_cNsTarget) / ns; \
+        uint64_t cIterations = (a_cNsTarget) / nsPrf; \
         if (cIterations <= 1) \
             cIterations = 2; \
         else if (cIterations & 1) \
@@ -97,10 +105,12 @@
         nsStart = RTTimeNanoTS(); \
         for (; iIteration < cIterations; iIteration++) \
             RTTESTI_CHECK_RC(a_fnCall, VINF_SUCCESS); \
-        ns = RTTimeNanoTS() - nsStart; \
-        RTTestIValueF(ns / cIterations, RTTESTUNIT_NS_PER_OCCURRENCE, a_szDesc); \
+        nsPrf = RTTimeNanoTS() - nsStart; \
+        RTTestIValue(a_szDesc, nsPrf / cIterations, RTTESTUNIT_NS_PER_OCCURRENCE); \
         if (g_fShowDuration) \
-            RTTestIValueF(ns, RTTESTUNIT_NS, "%s duration", a_szDesc); \
+            RTTestIValueF(nsPrf, RTTESTUNIT_NS, "%s duration", a_szDesc); \
+        if (g_fShowIterations) \
+            RTTestIValueF(iIteration, RTTESTUNIT_OCCURRENCES, "%s iterations", a_szDesc); \
     } while (0)
 
 
@@ -170,6 +180,8 @@
         RTTestIValueF(ns / cCalls, RTTESTUNIT_NS_PER_OCCURRENCE, a_szDesc); \
         if (g_fShowDuration) \
             RTTestIValueF(ns, RTTESTUNIT_NS, "%s duration", a_szDesc); \
+        if (g_fShowIterations) \
+            RTTestIValueF(iIteration, RTTESTUNIT_OCCURRENCES, "%s iterations", a_szDesc); \
     } while (0)
 
 
@@ -250,7 +262,15 @@ enum
     kCmdOpt_NoWrite,
     kCmdOpt_Seek,
     kCmdOpt_NoSeek,
+    kCmdOpt_FSync,
+    kCmdOpt_NoFSync,
+    kCmdOpt_MMap,
+    kCmdOpt_NoMMap,
 
+    kCmdOpt_ShowDuration,
+    kCmdOpt_NoShowDuration,
+    kCmdOpt_ShowIterations,
+    kCmdOpt_NoShowIterations,
     kCmdOpt_End
 };
 
@@ -258,7 +278,6 @@ enum
 /*********************************************************************************************************************************
 *   Global Variables                                                                                                             *
 *********************************************************************************************************************************/
-
 /** Command line parameters */
 static const RTGETOPTDEF g_aCmdOptions[] =
 {
@@ -304,11 +323,20 @@ static const RTGETOPTDEF g_aCmdOptions[] =
     { "--no-write",         kCmdOpt_NoWrite,        RTGETOPT_REQ_NOTHING },
     { "--seek",             kCmdOpt_Seek,           RTGETOPT_REQ_NOTHING },
     { "--no-seek",          kCmdOpt_NoSeek,         RTGETOPT_REQ_NOTHING },
+    { "--fsync",            kCmdOpt_FSync,          RTGETOPT_REQ_NOTHING },
+    { "--no-fsync",         kCmdOpt_NoFSync,        RTGETOPT_REQ_NOTHING },
+    { "--mmap",             kCmdOpt_MMap,           RTGETOPT_REQ_NOTHING },
+    { "--no-mmap",          kCmdOpt_NoMMap,         RTGETOPT_REQ_NOTHING },
 
-    { "--quiet",            'q', RTGETOPT_REQ_NOTHING },
-    { "--verbose",          'v', RTGETOPT_REQ_NOTHING },
-    { "--version",          'V', RTGETOPT_REQ_NOTHING },
-    { "--help",             'h', RTGETOPT_REQ_NOTHING } /* for Usage() */
+    { "--show-duration",        kCmdOpt_ShowDuration,       RTGETOPT_REQ_NOTHING },
+    { "--no-show-duration",     kCmdOpt_NoShowDuration,     RTGETOPT_REQ_NOTHING },
+    { "--show-iterations",      kCmdOpt_ShowIterations,     RTGETOPT_REQ_NOTHING },
+    { "--no-show-iterations",   kCmdOpt_NoShowIterations,   RTGETOPT_REQ_NOTHING },
+
+    { "--quiet",                'q', RTGETOPT_REQ_NOTHING },
+    { "--verbose",              'v', RTGETOPT_REQ_NOTHING },
+    { "--version",              'V', RTGETOPT_REQ_NOTHING },
+    { "--help",                 'h', RTGETOPT_REQ_NOTHING } /* for Usage() */
 };
 
 /** The test handle. */
@@ -318,7 +346,10 @@ static RTTEST       g_hTest;
 static uint64_t     g_nsPerNanoTSCall = 1;
 /** Whether or not to display the duration of each profile run.
  * This is chiefly for verify the estimate phase.  */
-static bool         g_fShowDuration = true;
+static bool         g_fShowDuration = false;
+/** Whether or not to display the iteration count for each profile run.
+ * This is chiefly for verify the estimate phase.  */
+static bool         g_fShowIterations = false;
 /** Verbosity level. */
 static uint32_t     g_uVerbosity = 0;
 
@@ -338,9 +369,11 @@ static bool         g_fMkRmDir   = true;
 static bool         g_fStatVfs   = true;
 static bool         g_fRm        = true;
 static bool         g_fChSize    = true;
-static bool         g_fSeek      = true;
 static bool         g_fRead      = true;
 static bool         g_fWrite     = true;
+static bool         g_fSeek      = true;
+static bool         g_fFSync     = true;
+static bool         g_fMMap      = true;
 /** @} */
 
 /** The length of each test run. */
@@ -725,14 +758,17 @@ void fsPerfFUtimes(void)
     RTFSOBJINFO ObjInfo1 = {0};
     RTTESTI_CHECK_RC(RTFileQueryInfo(hFile1, &ObjInfo1,  RTFSOBJATTRADD_NOTHING), VINF_SUCCESS);
     RTTESTI_CHECK((RTTimeSpecGetSeconds(&ObjInfo1.ModificationTime) >> 2) == (RTTimeSpecGetSeconds(&Time2) >> 2));
-    RTTESTI_CHECK(RTTimeSpecGetNano(&ObjInfo1.AccessTime) == RTTimeSpecGetNano(&ObjInfo0.AccessTime));
+    char sz1[RTTIME_STR_LEN], sz2[RTTIME_STR_LEN]; /* Div by 1000 here for posix impl. using timeval. */
+    RTTESTI_CHECK_MSG(RTTimeSpecGetNano(&ObjInfo1.AccessTime) / 1000 == RTTimeSpecGetNano(&ObjInfo0.AccessTime) / 1000,
+                      ("%s, expected %s", RTTimeSpecToString(&ObjInfo1.AccessTime, sz1, sizeof(sz1)),
+                       RTTimeSpecToString(&ObjInfo0.AccessTime, sz2, sizeof(sz2))));
 
     /* Modify access time: */
     RTTESTI_CHECK_RC(RTFileSetTimes(hFile1, &Time1, NULL, NULL, NULL), VINF_SUCCESS);
     RTFSOBJINFO ObjInfo2 = {0};
     RTTESTI_CHECK_RC(RTFileQueryInfo(hFile1, &ObjInfo2,  RTFSOBJATTRADD_NOTHING), VINF_SUCCESS);
     RTTESTI_CHECK((RTTimeSpecGetSeconds(&ObjInfo2.AccessTime) >> 2) == (RTTimeSpecGetSeconds(&Time1) >> 2));
-    RTTESTI_CHECK(RTTimeSpecGetNano(&ObjInfo2.ModificationTime) == RTTimeSpecGetNano(&ObjInfo1.ModificationTime));
+    RTTESTI_CHECK(RTTimeSpecGetNano(&ObjInfo2.ModificationTime) / 1000 == RTTimeSpecGetNano(&ObjInfo1.ModificationTime) / 1000);
 
     /* Benchmark it: */
     PROFILE_FN(RTFileSetTimes(hFile1, NULL, iIteration & 1 ? &Time1 : &Time2, NULL, NULL), g_nsTestRun, "RTFileSetTimes");
@@ -858,14 +894,14 @@ void fsPerfUtimes(void)
     RTFSOBJINFO ObjInfo1;
     RTTESTI_CHECK_RC(RTPathQueryInfoEx(g_szDir, &ObjInfo1,  RTFSOBJATTRADD_NOTHING,  RTPATH_F_ON_LINK), VINF_SUCCESS);
     RTTESTI_CHECK((RTTimeSpecGetSeconds(&ObjInfo1.ModificationTime) >> 2) == (RTTimeSpecGetSeconds(&Time2) >> 2));
-    RTTESTI_CHECK(RTTimeSpecGetNano(&ObjInfo1.AccessTime) == RTTimeSpecGetNano(&ObjInfo0.AccessTime));
+    RTTESTI_CHECK(RTTimeSpecGetNano(&ObjInfo1.AccessTime) / 1000 == RTTimeSpecGetNano(&ObjInfo0.AccessTime) / 1000 /* posix timeval */);
 
     /* Modify access time: */
     RTTESTI_CHECK_RC(RTPathSetTimesEx(g_szDir, &Time1, NULL, NULL, NULL, RTPATH_F_ON_LINK), VINF_SUCCESS);
     RTFSOBJINFO ObjInfo2 = {0};
     RTTESTI_CHECK_RC(RTPathQueryInfoEx(g_szDir, &ObjInfo2,  RTFSOBJATTRADD_NOTHING,  RTPATH_F_ON_LINK), VINF_SUCCESS);
     RTTESTI_CHECK((RTTimeSpecGetSeconds(&ObjInfo2.AccessTime) >> 2) == (RTTimeSpecGetSeconds(&Time1) >> 2));
-    RTTESTI_CHECK(RTTimeSpecGetNano(&ObjInfo2.ModificationTime) == RTTimeSpecGetNano(&ObjInfo1.ModificationTime));
+    RTTESTI_CHECK(RTTimeSpecGetNano(&ObjInfo2.ModificationTime) / 1000 == RTTimeSpecGetNano(&ObjInfo1.ModificationTime) / 1000 /* posix timeval */);
 
     /* Profile shallow: */
     PROFILE_FN(RTPathSetTimesEx(g_szDir, iIteration & 1 ? &Time1 : &Time2, iIteration & 1 ? &Time2 : &Time1,
@@ -1200,9 +1236,15 @@ void fsPerfRm(void)
     RTTESTI_CHECK_RC(RTFileDelete(InDir(RT_STR_TUPLE("known-file" RTPATH_SLASH_STR "no-such-file"))), VERR_PATH_NOT_FOUND);
 
     /* Directories: */
-    RTTESTI_CHECK_RC(RTFileDelete(InEmptyDir(RT_STR_TUPLE("."))), VERR_ACCESS_DENIED);
+#if defined(RT_OS_WINDOWS)
+    RTTESTI_CHECK_RC(RTFileDelete(InEmptyDir(RT_STR_TUPLE("."))),  VERR_ACCESS_DENIED);
     RTTESTI_CHECK_RC(RTFileDelete(InEmptyDir(RT_STR_TUPLE(".."))), VERR_ACCESS_DENIED);
-    RTTESTI_CHECK_RC(RTFileDelete(InEmptyDir(RT_STR_TUPLE(""))), VERR_ACCESS_DENIED);
+    RTTESTI_CHECK_RC(RTFileDelete(InEmptyDir(RT_STR_TUPLE(""))),   VERR_ACCESS_DENIED);
+#else
+    RTTESTI_CHECK_RC(RTFileDelete(InEmptyDir(RT_STR_TUPLE("."))),  VERR_IS_A_DIRECTORY);
+    RTTESTI_CHECK_RC(RTFileDelete(InEmptyDir(RT_STR_TUPLE(".."))), VERR_IS_A_DIRECTORY);
+    RTTESTI_CHECK_RC(RTFileDelete(InEmptyDir(RT_STR_TUPLE(""))),   VERR_IS_A_DIRECTORY);
+#endif
 
     /* Shallow: */
     RTFILE hFile1;
@@ -1391,7 +1433,7 @@ int fsPerfIoPrepFile(RTFILE hFile1, uint64_t cbFile, uint8_t **ppbFree)
 /**
  * Checks the content read from the file fsPerfIoPrepFile() prepared.
  */
-bool fsPrefCheckReadBuf(unsigned uLineNo, uint64_t off, uint8_t const *pbBuf, size_t cbBuf, uint8_t bFiller = 0xf6)
+bool fsPerfCheckReadBuf(unsigned uLineNo, uint64_t off, uint8_t const *pbBuf, size_t cbBuf, uint8_t bFiller = 0xf6)
 {
     uint32_t cMismatches = 0;
     size_t   offBuf      = 0;
@@ -1453,7 +1495,7 @@ bool fsPrefCheckReadBuf(unsigned uLineNo, uint64_t off, uint8_t const *pbBuf, si
 /**
  * Sets up write buffer with offset markers and fillers.
  */
-void fsPrefFillWriteBuf(uint64_t off, uint8_t *pbBuf, size_t cbBuf, uint8_t bFiller = 0xf6)
+void fsPerfFillWriteBuf(uint64_t off, uint8_t *pbBuf, size_t cbBuf, uint8_t bFiller = 0xf6)
 {
     uint32_t offBlock = (uint32_t)(off & (_1K - 1));
     while (cbBuf > 0)
@@ -1645,7 +1687,7 @@ void fsPerfIoSeek(RTFILE hFile1, uint64_t cbFile)
         } \
         RTTestIValueF(ns / iIteration, \
                       RTTESTUNIT_NS_PER_OCCURRENCE, a_szOperation "/seq/%RU32 latency", cbBlock); \
-        RTTestIValueF((uint64_t)iIteration * cbBlock / ((double)ns / RT_NS_1SEC), \
+        RTTestIValueF((uint64_t)((uint64_t)iIteration * cbBlock / ((double)ns / RT_NS_1SEC)), \
                       RTTESTUNIT_BYTES_PER_SEC,     a_szOperation "/seq/%RU32 throughput", cbBlock); \
         RTTestIValueF(iIteration, \
                       RTTESTUNIT_CALLS,             a_szOperation "/seq/%RU32 calls", cbBlock); \
@@ -1736,23 +1778,24 @@ void fsPerfRead(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
         for (size_t offBuf = 0; offBuf < cbBuf; )
         {
             uint32_t const cbLeft   = (uint32_t)(cbBuf - offBuf);
-            uint32_t const cbToRead = aRuns[i].cbMax < UINT32_MAX / 2 ? RTRandU32Ex(1, aRuns[i].cbMax)
+            uint32_t const cbToRead = aRuns[i].cbMax < UINT32_MAX / 2 ? RTRandU32Ex(1, RT_MIN(aRuns[i].cbMax, cbLeft))
                                     : aRuns[i].cbMax == UINT32_MAX    ? RTRandU32Ex(RT_MAX(cbLeft / 4, 1), cbLeft)
-                                    : RTRandU32Ex(cbLeft >= _8K ? _8K : 1, RT_MIN(_1M, cbLeft));
+                                    :                                   RTRandU32Ex(cbLeft >= _8K ? _8K : 1, RT_MIN(_1M, cbLeft));
             size_t cbActual = 0;
             RTTESTI_CHECK_RC(RTFileRead(hFile1, &pbBuf[offBuf], cbToRead, &cbActual), VINF_SUCCESS);
             if (cbActual == cbToRead)
                 offBuf += cbActual;
             else
             {
-                RTTestIFailed("Attempting to read %#x bytes at %#zx, only got %#x bytes back!\n", cbToRead, offBuf, cbActual);
+                RTTestIFailed("Attempting to read %#x bytes at %#zx, only got %#x bytes back! (cbLeft=%#x cbBuf=%#zx)\n",
+                              cbToRead, offBuf, cbActual, cbLeft, cbBuf);
                 if (cbActual)
                     offBuf += cbActual;
                 else
                     pbBuf[offBuf++] = 0x11;
             }
         }
-        fsPrefCheckReadBuf(__LINE__, aRuns[i].offFile, pbBuf, cbBuf);
+        fsPerfCheckReadBuf(__LINE__, aRuns[i].offFile, pbBuf, cbBuf);
     }
 #endif
 
@@ -1834,7 +1877,7 @@ void fsPerfRead(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
             }
         }
     }
-    fsPrefCheckReadBuf(__LINE__, 0, pbBuf, cbBuf);
+    fsPerfCheckReadBuf(__LINE__, 0, pbBuf, cbBuf);
 
     /*
      * Check reading zero bytes at the end of the file.
@@ -1853,6 +1896,9 @@ void fsPerfRead(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
     RTTESTI_CHECK_MSG(rcNt == STATUS_END_OF_FILE, ("rcNt=%#x", rcNt));
     RTTESTI_CHECK(Ios.Status == STATUS_END_OF_FILE);
     RTTESTI_CHECK(Ios.Information == 0);
+#else
+    ssize_t cbRead = read((int)RTFileToNative(hFile1), pbBuf, 0);
+    RTTESTI_CHECK(cbRead == 0);
 #endif
 
     /*
@@ -1871,7 +1917,7 @@ void fsPerfRead(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
     RTTESTI_CHECK(Ios.Status == STATUS_SUCCESS);
     RTTESTI_CHECK(Ios.Information == _4K);
     RTTESTI_CHECK(RTFileTell(hFile1) == cbFile / 2 + _4K);
-    fsPrefCheckReadBuf(__LINE__, cbFile / 2, pbBuf, _4K);
+    fsPerfCheckReadBuf(__LINE__, cbFile / 2, pbBuf, _4K);
 #endif
 
     RTMemPageFree(pbBuf, cbBuf);
@@ -1951,8 +1997,8 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
     uint8_t bFiller = 0x88;
     for (uint32_t i = 0; i < RT_ELEMENTS(aRuns); i++, bFiller)
     {
-        fsPrefFillWriteBuf(aRuns[i].offFile, pbBuf, cbBuf, bFiller);
-        fsPrefCheckReadBuf(__LINE__, aRuns[i].offFile, pbBuf, cbBuf, bFiller);
+        fsPerfFillWriteBuf(aRuns[i].offFile, pbBuf, cbBuf, bFiller);
+        fsPerfCheckReadBuf(__LINE__, aRuns[i].offFile, pbBuf, cbBuf, bFiller);
 
         RTTESTI_CHECK_RC(RTFileSeek(hFile1, aRuns[i].offFile, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
         for (size_t offBuf = 0; offBuf < cbBuf; )
@@ -1976,7 +2022,7 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
         }
 
         RTTESTI_CHECK_RC(RTFileReadAt(hFile1, aRuns[i].offFile, pbBuf, cbBuf, NULL), VINF_SUCCESS);
-        fsPrefCheckReadBuf(__LINE__, aRuns[i].offFile, pbBuf, cbBuf, bFiller);
+        fsPerfCheckReadBuf(__LINE__, aRuns[i].offFile, pbBuf, cbBuf, bFiller);
     }
 
 
@@ -1986,8 +2032,8 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
     RTFILE ahFiles[2] = { hFileWriteThru, hFileNoCache };
     for (unsigned iFile = 0; iFile < RT_ELEMENTS(ahFiles); iFile++, bFiller++)
     {
-        fsPrefFillWriteBuf(0, pbBuf, cbBuf, bFiller);
-        fsPrefCheckReadBuf(__LINE__, 0, pbBuf, cbBuf, bFiller);
+        fsPerfFillWriteBuf(0, pbBuf, cbBuf, bFiller);
+        fsPerfCheckReadBuf(__LINE__, 0, pbBuf, cbBuf, bFiller);
         RTTESTI_CHECK_RC(RTFileSeek(ahFiles[iFile], 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
 
         uint32_t cbPage = PAGE_SIZE;
@@ -2001,7 +2047,7 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
             if (cbActual == cbToWrite)
             {
                 RTTESTI_CHECK_RC(RTFileReadAt(hFile1, offBuf, pbBuf, cbToWrite, NULL), VINF_SUCCESS);
-                fsPrefCheckReadBuf(__LINE__, offBuf, pbBuf, cbToWrite, bFiller);
+                fsPerfCheckReadBuf(__LINE__, offBuf, pbBuf, cbToWrite, bFiller);
                 offBuf += cbActual;
             }
             else
@@ -2018,7 +2064,7 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
         }
 
         RTTESTI_CHECK_RC(RTFileReadAt(ahFiles[iFile], 0, pbBuf, cbBuf, NULL), VINF_SUCCESS);
-        fsPrefCheckReadBuf(__LINE__, 0, pbBuf, cbBuf, bFiller);
+        fsPerfCheckReadBuf(__LINE__, 0, pbBuf, cbBuf, bFiller);
     }
 
     /*
@@ -2033,10 +2079,12 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
     RTTESTI_CHECK_MSG(rcNt == STATUS_SUCCESS, ("rcNt=%#x", rcNt));
     RTTESTI_CHECK(Ios.Status == STATUS_SUCCESS);
     RTTESTI_CHECK(Ios.Information == 0);
-
-    RTTESTI_CHECK_RC(RTFileRead(hFile1, pbBuf, _4K, NULL), VINF_SUCCESS);
-    fsPrefCheckReadBuf(__LINE__, cbFile - _4K, pbBuf, _4K, pbBuf[0x8]);
+#else
+    ssize_t cbWritten = write((int)RTFileToNative(hFile1), pbBuf, 0);
+    RTTESTI_CHECK(cbWritten == 0);
 #endif
+    RTTESTI_CHECK_RC(RTFileRead(hFile1, pbBuf, _4K, NULL), VINF_SUCCESS);
+    fsPerfCheckReadBuf(__LINE__, cbFile - _4K, pbBuf, _4K, pbBuf[0x8]);
 
     /*
      * Other OS specific stuff.
@@ -2059,6 +2107,233 @@ void fsPerfWrite(RTFILE hFile1, RTFILE hFileNoCache, RTFILE hFileWriteThru, uint
 
     RT_NOREF(hFileNoCache, hFileWriteThru);
     RTMemPageFree(pbBuf, cbBuf);
+}
+
+
+/**
+ * Worker for testing RTFileFlush.
+ */
+DECL_FORCE_INLINE(int) fsPerfFSyncWorker(RTFILE hFile1, uint64_t cbFile, uint8_t *pbBuf, size_t cbBuf, uint64_t *poffFile)
+{
+    if (*poffFile + cbBuf <= cbFile)
+    { /* likely */ }
+    else
+    {
+        RTTESTI_CHECK_RC(RTFileSeek(hFile1, 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
+        *poffFile = 0;
+    }
+
+    RTTESTI_CHECK_RC_RET(RTFileWrite(hFile1, pbBuf, cbBuf, NULL), VINF_SUCCESS, rcCheck);
+    RTTESTI_CHECK_RC_RET(RTFileFlush(hFile1), VINF_SUCCESS, rcCheck);
+
+    *poffFile += cbBuf;
+    return VINF_SUCCESS;
+}
+
+
+void fsPerfFSync(RTFILE hFile1, uint64_t cbFile)
+{
+    RTTestISub("fsync");
+
+    RTTESTI_CHECK_RC(RTFileFlush(hFile1), VINF_SUCCESS);
+
+    PROFILE_FN(RTFileFlush(hFile1), g_nsTestRun, "RTFileFlush");
+
+    size_t   cbBuf = PAGE_SIZE;
+    uint8_t *pbBuf = (uint8_t *)RTMemPageAlloc(cbBuf);
+    RTTESTI_CHECK_RETV(pbBuf != NULL);
+    memset(pbBuf, 0xf4, cbBuf);
+
+    RTTESTI_CHECK_RC(RTFileSeek(hFile1, 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
+    uint64_t offFile = 0;
+    PROFILE_FN(fsPerfFSyncWorker(hFile1, cbFile, pbBuf, cbBuf, &offFile), g_nsTestRun, "RTFileWrite[Page]/RTFileFlush");
+
+    RTMemPageFree(pbBuf, cbBuf);
+}
+
+
+#ifndef RT_OS_OS2
+/**
+ * Worker for profiling msync.
+ */
+DECL_FORCE_INLINE(int) fsPerfMSyncWorker(uint8_t *pbMapping, size_t offMapping, size_t cbFlush, size_t *pcbFlushed)
+{
+    uint8_t *pbCur = &pbMapping[offMapping];
+    for (size_t offFlush = 0; offFlush < cbFlush; offFlush += PAGE_SIZE)
+        *(size_t volatile *)&pbCur[offFlush + 8] = cbFlush;
+# ifdef RT_OS_WINDOWS
+    RTTESTI_CHECK(FlushViewOfFile(pbCur, cbFlush));
+# else
+    RTTESTI_CHECK(msync(pbCur, cbFlush, MS_SYNC) == 0);
+# endif
+    if (*pcbFlushed < offMapping + cbFlush)
+        *pcbFlushed = offMapping + cbFlush;
+    return VINF_SUCCESS;
+}
+#endif /* !RT_OS_OS2 */
+
+
+void fsPerfMMap(RTFILE hFile1, RTFILE hFileNoCache, uint64_t cbFile)
+{
+    RTTestISub("mmap");
+#if !defined(RT_OS_OS2)
+    static const char * const s_apszStates[] = { "readonly", "writecopy", "readwrite" };
+    enum { kMMap_ReadOnly = 0, kMMap_WriteCopy, kMMap_ReadWrite, kMMap_End };
+    for (int enmState = kMMap_ReadOnly; enmState < kMMap_End; enmState++)
+    {
+        /*
+         * Do the mapping.
+         */
+        size_t cbMapping = (size_t)cbFile;
+        if (cbMapping != cbFile)
+            cbMapping = _256M;
+        uint8_t *pbMapping;
+
+# ifdef RT_OS_WINDOWS
+        HANDLE hSection;
+        for (;; cbMapping /= 2)
+        {
+            hSection = CreateFileMapping((HANDLE)RTFileToNative(hFile1), NULL,
+                                         enmState == kMMap_ReadOnly    ? PAGE_READONLY
+                                         : enmState == kMMap_WriteCopy ? PAGE_WRITECOPY : PAGE_READWRITE,
+                                         (uint32_t)((uint64_t)cbMapping >> 32), (uint32_t)cbMapping, NULL);
+            DWORD dwErr1 = GetLastError();
+            DWORD dwErr2 = 0;
+            if (hSection != NULL)
+            {
+                pbMapping = (uint8_t *)MapViewOfFile(hSection,
+                                                     enmState == kMMap_ReadOnly    ? FILE_MAP_READ
+                                                     : enmState == kMMap_WriteCopy ? FILE_MAP_COPY
+                                                     :                               FILE_MAP_WRITE,
+                                                     0, 0, cbMapping);
+                if (pbMapping)
+                    break;
+                dwErr2 = GetLastError();
+                CloseHandle(hSection);
+            }
+            if (cbMapping <= _2M)
+            {
+                RTTestIFailed("%u: CreateFileMapping or MapViewOfFile failed: %u, %u", enmState, dwErr1, dwErr2);
+                return;
+            }
+        }
+# else
+        for (;; cbMapping /= 2)
+        {
+            pbMapping = (uint8_t *)mmap(NULL, cbMapping,
+                                        enmState == kMMap_ReadOnly  ? PROT_READ   : PROT_READ | PROT_WRITE,
+                                        enmState == kMMap_WriteCopy ? MAP_PRIVATE : MAP_SHARED,
+                                        (int)RTFileToNative(hFile1), 0);
+            if ((void *)pbMapping != MAP_FAILED)
+                break;
+            RTTESTI_CHECK_MSG_RETV(cbMapping > _2M, ("errno=%d", errno));
+        }
+# endif
+
+        /*
+         * Time page-ins just for fun.
+         */
+        size_t const cPages = cbMapping >> PAGE_SHIFT;
+        size_t uDummy = 0;
+        uint64_t ns = RTTimeNanoTS();
+        for (size_t iPage = 0; iPage < cPages; iPage++)
+            uDummy += ASMAtomicReadU8(&pbMapping[iPage << PAGE_SHIFT]);
+        ns = RTTimeNanoTS() - ns;
+        RTTestIValueF(ns / cPages, RTTESTUNIT_NS_PER_OCCURRENCE,  "page-in %s", s_apszStates[enmState]);
+
+        /* Check the content. */
+        fsPerfCheckReadBuf(__LINE__, 0, pbMapping, cbMapping);
+
+        if (enmState != kMMap_ReadOnly)
+        {
+            /* Write stuff to the first two megabytes.  In the COW case, we'll detect
+               corruption of shared data during content checking of the RW iterations. */
+            fsPerfFillWriteBuf(0, pbMapping, _2M, 0xf7);
+            if (enmState == kMMap_ReadWrite)
+            {
+                /* For RW we can try read back from the file handle and check if we get
+                   a match there first.  */
+                uint8_t abBuf[_4K];
+                for (uint32_t off = 0; off < _2M; off += sizeof(abBuf))
+                {
+                    RTTESTI_CHECK_RC(RTFileReadAt(hFile1, off, abBuf, sizeof(abBuf), NULL), VINF_SUCCESS);
+                    fsPerfCheckReadBuf(__LINE__, off, abBuf, sizeof(abBuf), 0xf7);
+                }
+# ifdef RT_OS_WINDOWS
+                RTTESTI_CHECK(FlushViewOfFile(pbMapping, _2M));
+# else
+                RTTESTI_CHECK(msync(pbMapping, _2M, MS_SYNC) == 0);
+# endif
+
+                /*
+                 * Time modifying and flushing a few different number of pages.
+                 */
+                static size_t const s_acbFlush[] = { PAGE_SIZE, PAGE_SIZE * 2, PAGE_SIZE * 3, PAGE_SIZE * 8, PAGE_SIZE * 16, _2M };
+                for (unsigned iFlushSize = 0 ; iFlushSize < RT_ELEMENTS(s_acbFlush); iFlushSize++)
+                {
+                    size_t const cbFlush = s_acbFlush[iFlushSize];
+                    if (cbFlush > cbMapping)
+                        continue;
+
+                    char szDesc[80];
+                    RTStrPrintf(szDesc, sizeof(szDesc), "touch/flush/%zu", cbFlush);
+                    size_t const cFlushes      = cbMapping / cbFlush;
+                    size_t const cbMappingUsed = cFlushes * cbFlush;
+                    size_t       cbFlushed     = 0;
+                    PROFILE_FN(fsPerfMSyncWorker(pbMapping, (iIteration * cbFlush) % cbMappingUsed, cbFlush, &cbFlushed),
+                               g_nsTestRun, szDesc);
+
+                    /*
+                     * Check that all the changes made it thru to the file:
+                     */
+                    size_t   cbBuf = _2M;
+                    uint8_t *pbBuf = (uint8_t *)RTMemPageAlloc(_2M);
+                    if (!pbBuf)
+                    {
+                        cbBuf = _4K;
+                        pbBuf = (uint8_t *)RTMemPageAlloc(_2M);
+                    }
+                    if (pbBuf)
+                    {
+                        RTTESTI_CHECK_RC(RTFileSeek(hFileNoCache, 0, RTFILE_SEEK_BEGIN, NULL), VINF_SUCCESS);
+                        size_t const cbToCheck = RT_MIN(cFlushes * cbFlush, cbFlushed);
+                        unsigned     cErrors   = 0;
+                        for (size_t offBuf = 0; cErrors < 32 && offBuf < cbToCheck; offBuf += cbBuf)
+                        {
+                            size_t cbToRead = RT_MIN(cbBuf, cbToCheck - offBuf);
+                            RTTESTI_CHECK_RC(RTFileRead(hFileNoCache, pbBuf, cbToRead, NULL), VINF_SUCCESS);
+
+                            for (size_t offFlush = 0; offFlush < cbToRead; offFlush += PAGE_SIZE)
+                                if (*(size_t volatile *)&pbBuf[offFlush + 8] != cbFlush)
+                                {
+                                    RTTestIFailed("Flush issue at offset #%zx: %#zx, expected %#zx (cbFlush=%#zx)",
+                                                  offBuf, *(size_t volatile *)&pbBuf[offFlush + 8], cbFlush, cbFlush);
+                                    if (++cErrors > 32)
+                                        break;
+                                }
+                        }
+                        RTMemPageFree(pbBuf, cbBuf);
+                    }
+                }
+            }
+        }
+
+        /*
+         * Unmap it.
+         */
+# ifdef RT_OS_WINDOWS
+        RTTESTI_CHECK(UnmapViewOfFile(pbMapping));
+        RTTESTI_CHECK(CloseHandle(hSection));
+# else
+        RTTESTI_CHECK(munmap(pbMapping, cbMapping) == 0);
+# endif
+    }
+
+    RT_NOREF(hFileNoCache);
+#else
+    RTTestSkipped(g_hTest,  "not supported/implemented");
+    RT_NOREF(hFile1, hFileNoCache, cbFile);
+#endif
 }
 
 
@@ -2126,8 +2401,8 @@ void fsPerfIo(void)
             for (unsigned i = 0; i < g_cIoBlocks; i++)
                 fsPerfIoReadBlockSize(hFile1, cbFile, g_acbIoBlocks[i]);
         }
-        /** @todo mmap */
-
+        if (g_fMMap)
+            fsPerfMMap(hFile1, hFileNoCache, cbFile);
         if (g_fWrite)
         {
             /* This is destructive to the file content. */
@@ -2135,7 +2410,8 @@ void fsPerfIo(void)
             for (unsigned i = 0; i < g_cIoBlocks; i++)
                 fsPerfIoWriteBlockSize(hFile1, cbFile, g_acbIoBlocks[i]);
         }
-
+        if (g_fFSync)
+            fsPerfFSync(hFile1, cbFile);
     }
 
     RTTESTI_CHECK_RC(RTFileSetSize(hFile1, 0), VINF_SUCCESS);
@@ -2169,6 +2445,10 @@ static void Usage(PRTSTREAM pStrm)
             case 'q':   pszHelp = "Quiet execution."; break;
             case 'h':   pszHelp = "Displays this help and exit"; break;
             case 'V':   pszHelp = "Displays the program revision"; break;
+            case kCmdOpt_ShowDuration:      pszHelp =  "Show duration of profile runs. default: --no-show-duration"; break;
+            case kCmdOpt_NoShowDuration:    pszHelp =  "Hide duration of profile runs. default: --no-show-duration"; break;
+            case kCmdOpt_ShowIterations:    pszHelp =  "Show iteration count for profile runs. default: --no-show-iterations"; break;
+            case kCmdOpt_NoShowIterations:  pszHelp =  "Hide iteration count for profile runs. default: --no-show-iterations"; break;
             default:
                 if (g_aCmdOptions[i].iShort >= kCmdOpt_First)
                 {
@@ -2231,7 +2511,11 @@ int main(int argc, char *argv[])
             case 'd':
                 rc = RTPathAbs(ValueUnion.psz, g_szDir, sizeof(g_szDir) / 2);
                 if (RT_SUCCESS(rc))
+                {
+                    RTPathEnsureTrailingSeparator(g_szDir, sizeof(g_szDir));
+                    g_cchDir = strlen(g_szDir);
                     break;
+                }
                 RTTestFailed(g_hTest, "RTPathAbs(%s) failed: %Rrc\n", ValueUnion.psz, rc);
                 return RTTestSummaryAndDestroy(g_hTest);
 
@@ -2267,6 +2551,8 @@ int main(int argc, char *argv[])
                 g_fRead      = true;
                 g_fWrite     = true;
                 g_fSeek      = true;
+                g_fFSync     = true;
+                g_fMMap      = true;
                 break;
 
             case 'z':
@@ -2287,6 +2573,8 @@ int main(int argc, char *argv[])
                 g_fRead      = false;
                 g_fWrite     = false;
                 g_fSeek      = false;
+                g_fFSync     = false;
+                g_fMMap      = false;
                 break;
 
 #define CASE_OPT(a_Stem) \
@@ -2306,9 +2594,14 @@ int main(int argc, char *argv[])
             CASE_OPT(StatVfs);
             CASE_OPT(Rm);
             CASE_OPT(ChSize);
-            CASE_OPT(Seek);
             CASE_OPT(Read);
             CASE_OPT(Write);
+            CASE_OPT(Seek);
+            CASE_OPT(FSync);
+            CASE_OPT(MMap);
+
+            CASE_OPT(ShowDuration);
+            CASE_OPT(ShowIterations);
 #undef CASE_OPT
 
             case 'q':
@@ -2325,7 +2618,7 @@ int main(int argc, char *argv[])
 
             case 'V':
             {
-                char szRev[] = "$Revision: 76903 $";
+                char szRev[] = "$Revision: 76929 $";
                 szRev[RT_ELEMENTS(szRev) - 2] = '\0';
                 RTPrintf(RTStrStrip(strchr(szRev, ':') + 1));
                 return RTEXITCODE_SUCCESS;
@@ -2384,7 +2677,7 @@ int main(int argc, char *argv[])
                     fsPerfRm(); /* deletes manyfiles and manytree */
                 if (g_fChSize)
                     fsPerfChSize();
-                if (g_fRead || g_fWrite || g_fSeek)
+                if (g_fRead || g_fWrite || g_fSeek || g_fFSync || g_fMMap)
                     fsPerfIo();
             }
 
