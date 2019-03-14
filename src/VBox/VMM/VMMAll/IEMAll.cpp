@@ -1,4 +1,4 @@
-/* $Id: IEMAll.cpp 77382 2019-02-20 13:44:22Z vboxsync $ */
+/* $Id: IEMAll.cpp 77576 2019-03-06 09:47:10Z vboxsync $ */
 /** @file
  * IEM - Interpreted Execution Manager - All Contexts.
  */
@@ -14165,7 +14165,7 @@ VMMDECL(VBOXSTRICTRC) IEMExecOne(PVMCPU pVCpu)
 }
 
 
-VMMDECL(VBOXSTRICTRC)       IEMExecOneEx(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint32_t *pcbWritten)
+VMMDECL(VBOXSTRICTRC) IEMExecOneEx(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint32_t *pcbWritten)
 {
     AssertReturn(CPUMCTX2CORE(IEM_GET_CTX(pVCpu)) == pCtxCore, VERR_IEM_IPE_3);
 
@@ -14187,8 +14187,8 @@ VMMDECL(VBOXSTRICTRC)       IEMExecOneEx(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, ui
 }
 
 
-VMMDECL(VBOXSTRICTRC)       IEMExecOneWithPrefetchedByPC(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint64_t OpcodeBytesPC,
-                                                         const void *pvOpcodeBytes, size_t cbOpcodeBytes)
+VMMDECL(VBOXSTRICTRC) IEMExecOneWithPrefetchedByPC(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint64_t OpcodeBytesPC,
+                                                   const void *pvOpcodeBytes, size_t cbOpcodeBytes)
 {
     AssertReturn(CPUMCTX2CORE(IEM_GET_CTX(pVCpu)) == pCtxCore, VERR_IEM_IPE_3);
 
@@ -14223,7 +14223,7 @@ VMMDECL(VBOXSTRICTRC)       IEMExecOneWithPrefetchedByPC(PVMCPU pVCpu, PCPUMCTXC
 }
 
 
-VMMDECL(VBOXSTRICTRC)       IEMExecOneBypassEx(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint32_t *pcbWritten)
+VMMDECL(VBOXSTRICTRC) IEMExecOneBypassEx(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint32_t *pcbWritten)
 {
     AssertReturn(CPUMCTX2CORE(IEM_GET_CTX(pVCpu)) == pCtxCore, VERR_IEM_IPE_3);
 
@@ -14245,8 +14245,8 @@ VMMDECL(VBOXSTRICTRC)       IEMExecOneBypassEx(PVMCPU pVCpu, PCPUMCTXCORE pCtxCo
 }
 
 
-VMMDECL(VBOXSTRICTRC)       IEMExecOneBypassWithPrefetchedByPC(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint64_t OpcodeBytesPC,
-                                                               const void *pvOpcodeBytes, size_t cbOpcodeBytes)
+VMMDECL(VBOXSTRICTRC) IEMExecOneBypassWithPrefetchedByPC(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint64_t OpcodeBytesPC,
+                                                         const void *pvOpcodeBytes, size_t cbOpcodeBytes)
 {
     AssertReturn(CPUMCTX2CORE(IEM_GET_CTX(pVCpu)) == pCtxCore, VERR_IEM_IPE_3);
 
@@ -14294,9 +14294,9 @@ VMMDECL(VBOXSTRICTRC)       IEMExecOneBypassWithPrefetchedByPC(PVMCPU pVCpu, PCP
  * @param   pcbWritten      Where to return the number of bytes written.
  *                          Optional.
  */
-VMMDECL(VBOXSTRICTRC)       IEMExecOneBypassWithPrefetchedByPCWritten(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint64_t OpcodeBytesPC,
-                                                                      const void *pvOpcodeBytes, size_t cbOpcodeBytes,
-                                                                      uint32_t *pcbWritten)
+VMMDECL(VBOXSTRICTRC) IEMExecOneBypassWithPrefetchedByPCWritten(PVMCPU pVCpu, PCPUMCTXCORE pCtxCore, uint64_t OpcodeBytesPC,
+                                                                const void *pvOpcodeBytes, size_t cbOpcodeBytes,
+                                                                uint32_t *pcbWritten)
 {
     AssertReturn(CPUMCTX2CORE(IEM_GET_CTX(pVCpu)) == pCtxCore, VERR_IEM_IPE_3);
 
@@ -15353,7 +15353,7 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecDecodedInvlpg(PVMCPU pVCpu, uint8_t cbInstr, R
  *
  * @remarks Not all of the state needs to be synced in, the usual pluss RAX and RCX.
  */
-VMM_INT_DECL(VBOXSTRICTRC)  IEMExecDecodedCpuid(PVMCPU pVCpu, uint8_t cbInstr)
+VMM_INT_DECL(VBOXSTRICTRC) IEMExecDecodedCpuid(PVMCPU pVCpu, uint8_t cbInstr)
 {
     IEMEXEC_ASSERT_INSTR_LEN_RETURN(cbInstr, 2);
     IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_EXEC_DECODED_NO_MEM_MASK | CPUMCTX_EXTRN_RAX | CPUMCTX_EXTRN_RCX);
@@ -15446,7 +15446,7 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecDecodedRdtscp(PVMCPU pVCpu, uint8_t cbInstr)
  * @remarks Not all of the state needs to be synced in.  Requires RCX and
  *          (currently) all MSRs.
  */
-VMM_INT_DECL(VBOXSTRICTRC)  IEMExecDecodedRdmsr(PVMCPU pVCpu, uint8_t cbInstr)
+VMM_INT_DECL(VBOXSTRICTRC) IEMExecDecodedRdmsr(PVMCPU pVCpu, uint8_t cbInstr)
 {
     IEMEXEC_ASSERT_INSTR_LEN_RETURN(cbInstr, 2);
     IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_EXEC_DECODED_NO_MEM_MASK | CPUMCTX_EXTRN_RCX | CPUMCTX_EXTRN_ALL_MSRS);
@@ -15470,7 +15470,7 @@ VMM_INT_DECL(VBOXSTRICTRC)  IEMExecDecodedRdmsr(PVMCPU pVCpu, uint8_t cbInstr)
  * @remarks Not all of the state needs to be synced in.  Requires RCX, RAX, RDX,
  *          and (currently) all MSRs.
  */
-VMM_INT_DECL(VBOXSTRICTRC)  IEMExecDecodedWrmsr(PVMCPU pVCpu, uint8_t cbInstr)
+VMM_INT_DECL(VBOXSTRICTRC) IEMExecDecodedWrmsr(PVMCPU pVCpu, uint8_t cbInstr)
 {
     IEMEXEC_ASSERT_INSTR_LEN_RETURN(cbInstr, 2);
     IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_EXEC_DECODED_NO_MEM_MASK
@@ -15745,7 +15745,6 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecSvmVmexit(PVMCPU pVCpu, uint64_t uExitCode, ui
  */
 VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVirtApicAccessMsr(PVMCPU pVCpu, uint32_t idMsr, uint64_t *pu64Value, bool fWrite)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_EXEC_DECODED_NO_MEM_MASK);
     Assert(pu64Value);
 
     VBOXSTRICTRC rcStrict;
@@ -15779,7 +15778,6 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVirtApicAccessMsr(PVMCPU pVCpu, uint32_t id
 VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVirtApicAccessMem(PVMCPU pVCpu, uint16_t offAccess, size_t cbAccess, void *pvData,
                                                        bool fWrite)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMEXIT_MASK);
     Assert(pvData);
 
     /** @todo NSTVMX: Unfortunately, the caller has no idea about instruction fetch
@@ -15803,8 +15801,6 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVirtApicAccessMem(PVMCPU pVCpu, uint16_t of
  */
 VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitApicWrite(PVMCPU pVCpu)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMEXIT_MASK);
-
     VBOXSTRICTRC rcStrict = iemVmxApicWriteEmulation(pVCpu);
     if (pVCpu->iem.s.cActiveMappings)
         iemMemRollback(pVCpu);
@@ -15821,7 +15817,6 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitApicWrite(PVMCPU pVCpu)
  */
 VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitPreemptTimer(PVMCPU pVCpu)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMEXIT_MASK);
     VBOXSTRICTRC rcStrict = iemVmxVmexitPreemptTimer(pVCpu);
     if (pVCpu->iem.s.cActiveMappings)
         iemMemRollback(pVCpu);
@@ -15842,7 +15837,6 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitPreemptTimer(PVMCPU pVCpu)
  */
 VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitExtInt(PVMCPU pVCpu, uint8_t uVector, bool fIntPending)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMEXIT_MASK);
     VBOXSTRICTRC rcStrict = iemVmxVmexitExtInt(pVCpu, uVector, fIntPending);
     if (pVCpu->iem.s.cActiveMappings)
         iemMemRollback(pVCpu);
@@ -15860,7 +15854,6 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitExtInt(PVMCPU pVCpu, uint8_t uVector,
  */
 VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitStartupIpi(PVMCPU pVCpu, uint8_t uVector)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMEXIT_MASK);
     VBOXSTRICTRC rcStrict = iemVmxVmexitStartupIpi(pVCpu, uVector);
     if (pVCpu->iem.s.cActiveMappings)
         iemMemRollback(pVCpu);
@@ -15877,7 +15870,6 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitStartupIpi(PVMCPU pVCpu, uint8_t uVec
  */
 VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitInitIpi(PVMCPU pVCpu)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMEXIT_MASK);
     VBOXSTRICTRC rcStrict = iemVmxVmexitInitIpi(pVCpu);
     if (pVCpu->iem.s.cActiveMappings)
         iemMemRollback(pVCpu);
@@ -15894,7 +15886,6 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitInitIpi(PVMCPU pVCpu)
  */
 VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitIntWindow(PVMCPU pVCpu)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMEXIT_MASK);
     VBOXSTRICTRC rcStrict = iemVmxVmexitIntWindow(pVCpu);
     if (pVCpu->iem.s.cActiveMappings)
         iemMemRollback(pVCpu);
@@ -15909,9 +15900,8 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitIntWindow(PVMCPU pVCpu)
  * @param   pVCpu           The cross context virtual CPU structure of the calling EMT.
  * @thread  EMT(pVCpu)
  */
-VMM_INT_DECL(VBOXSTRICTRC)  IEMExecVmxVmexitMtf(PVMCPU pVCpu)
+VMM_INT_DECL(VBOXSTRICTRC) IEMExecVmxVmexitMtf(PVMCPU pVCpu)
 {
-    IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMEXIT_MASK);
     VBOXSTRICTRC rcStrict = iemVmxVmexitMtf(pVCpu);
     if (pVCpu->iem.s.cActiveMappings)
         iemMemRollback(pVCpu);
@@ -16098,7 +16088,7 @@ VMM_INT_DECL(VBOXSTRICTRC) IEMExecDecodedVmlaunchVmresume(PVMCPU pVCpu, uint8_t 
     IEM_CTX_ASSERT(pVCpu, IEM_CPUMCTX_EXTRN_VMX_VMENTRY_MASK);
 
     iemInitExec(pVCpu, false /*fBypassHandlers*/);
-    VBOXSTRICTRC rcStrict = iemVmxVmlaunchVmresume(pVCpu, cbInstr,  uInstrId);
+    VBOXSTRICTRC rcStrict = iemVmxVmlaunchVmresume(pVCpu, cbInstr, uInstrId);
     if (pVCpu->iem.s.cActiveMappings)
         iemMemRollback(pVCpu);
     return iemExecStatusCodeFiddling(pVCpu, rcStrict);

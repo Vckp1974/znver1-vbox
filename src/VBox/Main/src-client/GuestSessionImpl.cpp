@@ -1,4 +1,4 @@
-/* $Id: GuestSessionImpl.cpp 77527 2019-03-01 12:30:11Z vboxsync $ */
+/* $Id: GuestSessionImpl.cpp 77587 2019-03-06 16:40:18Z vboxsync $ */
 /** @file
  * VirtualBox Main - Guest session handling.
  */
@@ -226,7 +226,7 @@ int GuestSession::init(Guest *pGuest, const GuestSessionStartupInfo &ssInfo,
      * distinguish callbacks which are for this session directly, or for
      * objects (like files, directories, ...) which are bound to this session.
      */
-    int rc = i_objectRegister(SESSIONOBJECTTYPE_SESSION, &mData.mObjectID);
+    int rc = i_objectRegister(NULL /* pObject */, SESSIONOBJECTTYPE_SESSION, &mData.mObjectID);
     if (RT_SUCCESS(rc))
     {
         rc = mData.mEnvironmentChanges.initChangeRecord();
@@ -305,41 +305,15 @@ void GuestSession::uninit(void)
 
     LogFlowThisFuncEnter();
 
+    /* Call i_onRemove to take care of the object cleanups. */
+    i_onRemove();
+
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
-
-    LogFlowThisFunc(("Closing directories (%zu total)\n",
-                     mData.mDirectories.size()));
-    for (SessionDirectories::iterator itDirs = mData.mDirectories.begin();
-         itDirs != mData.mDirectories.end(); ++itDirs)
-    {
-        itDirs->second->i_onRemove();
-        itDirs->second->uninit();
-    }
-    mData.mDirectories.clear();
-
-    LogFlowThisFunc(("Closing files (%zu total)\n",
-                     mData.mFiles.size()));
-    for (SessionFiles::iterator itFiles = mData.mFiles.begin();
-         itFiles != mData.mFiles.end(); ++itFiles)
-    {
-        itFiles->second->i_onRemove();
-        itFiles->second->uninit();
-    }
-    mData.mFiles.clear();
-
-    LogFlowThisFunc(("Closing processes (%zu total)\n",
-                     mData.mProcesses.size()));
-    for (SessionProcesses::iterator itProcs = mData.mProcesses.begin();
-         itProcs != mData.mProcesses.end(); ++itProcs)
-    {
-        itProcs->second->i_onRemove();
-        itProcs->second->uninit();
-    }
-    mData.mProcesses.clear();
 
     /* Unregister the session's object ID. */
     i_objectUnregister(mData.mObjectID);
 
+    Assert(mData.mObjects.size () == 0);
     mData.mObjects.clear();
 
     mData.mEnvironmentChanges.reset();
@@ -541,7 +515,7 @@ HRESULT GuestSession::setCurrentDirectory(const com::Utf8Str &aCurrentDirectory)
 
 HRESULT GuestSession::getUserHome(com::Utf8Str &aUserHome)
 {
-    HRESULT hr = i_isReadyExternal();
+    HRESULT hr = i_isStartedExternal();
     if (FAILED(hr))
         return hr;
 
@@ -579,7 +553,7 @@ HRESULT GuestSession::getUserHome(com::Utf8Str &aUserHome)
 
 HRESULT GuestSession::getUserDocuments(com::Utf8Str &aUserDocuments)
 {
-    HRESULT hr = i_isReadyExternal();
+    HRESULT hr = i_isStartedExternal();
     if (FAILED(hr))
         return hr;
 
@@ -740,7 +714,7 @@ int GuestSession::i_closeSession(uint32_t uFlags, uint32_t uTimeoutMS, int *prcG
 HRESULT GuestSession::i_copyFromGuest(const GuestSessionFsSourceSet &SourceSet,
                                       const com::Utf8Str &strDestination, ComPtr<IProgress> &pProgress)
 {
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -811,7 +785,7 @@ HRESULT GuestSession::i_copyFromGuest(const GuestSessionFsSourceSet &SourceSet,
 HRESULT GuestSession::i_copyToGuest(const GuestSessionFsSourceSet &SourceSet,
                                     const com::Utf8Str &strDestination, ComPtr<IProgress> &pProgress)
 {
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -1033,7 +1007,7 @@ int GuestSession::i_directoryUnregister(GuestDirectory *pDirectory)
     LogFlowFunc(("Removing directory ID=%RU32 (session %RU32, now total %zu directories)\n",
                  idObject, mData.mSession.mID, mData.mDirectories.size()));
 
-    rc = pDirConsumed->i_onRemove();
+    rc = pDirConsumed->i_onUnregister();
     AssertRCReturn(rc, rc);
 
     mData.mDirectories.erase(itDirs);
@@ -1160,16 +1134,19 @@ int GuestSession::i_directoryOpen(const GuestDirectoryOpenInfo &openInfo,
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
-    /* Register a new object ID. */
-    uint32_t idObject;
-    int rc = i_objectRegister(SESSIONOBJECTTYPE_DIRECTORY, &idObject);
-    if (RT_FAILURE(rc))
-        return rc;
-
     /* Create the directory object. */
     HRESULT hr = pDirectory.createObject();
     if (FAILED(hr))
         return VERR_COM_UNEXPECTED;
+
+    /* Register a new object ID. */
+    uint32_t idObject;
+    int rc = i_objectRegister(pDirectory, SESSIONOBJECTTYPE_DIRECTORY, &idObject);
+    if (RT_FAILURE(rc))
+    {
+        pDirectory.setNull();
+        return rc;
+    }
 
     Console *pConsole = mParent->i_getConsole();
     AssertPtr(pConsole);
@@ -1432,7 +1409,7 @@ int GuestSession::i_fileUnregister(GuestFile *pFile)
     LogFlowFunc(("Removing file ID=%RU32 (session %RU32, now total %zu files)\n",
                  pFileConsumed->getObjectID(), mData.mSession.mID, mData.mFiles.size()));
 
-    rc = pFileConsumed->i_onRemove();
+    rc = pFileConsumed->i_onUnregister();
     AssertRCReturn(rc, rc);
 
     mData.mFiles.erase(itFiles);
@@ -1518,16 +1495,19 @@ int GuestSession::i_fileOpen(const GuestFileOpenInfo &openInfo, ComObjPtr<GuestF
         return VERR_GSTCTL_GUEST_ERROR;
     }
 
-    /* Register a new object ID. */
-    uint32_t idObject;
-    int rc = i_objectRegister(SESSIONOBJECTTYPE_FILE, &idObject);
-    if (RT_FAILURE(rc))
-        return rc;
-
     /* Create the directory object. */
     HRESULT hr = pFile.createObject();
     if (FAILED(hr))
         return VERR_COM_UNEXPECTED;
+
+    /* Register a new object ID. */
+    uint32_t idObject;
+    int rc = i_objectRegister(pFile, SESSIONOBJECTTYPE_FILE, &idObject);
+    if (RT_FAILURE(rc))
+    {
+        pFile.setNull();
+        return rc;
+    }
 
     Console *pConsole = mParent->i_getConsole();
     AssertPtr(pConsole);
@@ -1732,20 +1712,68 @@ Utf8Str GuestSession::i_guestErrorToString(int rcGuest)
 }
 
 /**
+ * Returns whether the session is in a started state or not.
+ *
+ * @returns \c true if in a started state, or \c false if not.
+ */
+bool GuestSession::i_isStarted(void) const
+{
+    return (mData.mStatus == GuestSessionStatus_Started);
+}
+
+/**
  * Checks if this session is ready state where it can handle
  * all session-bound actions (like guest processes, guest files).
  * Only used by official API methods. Will set an external
  * error when not ready.
  */
-HRESULT GuestSession::i_isReadyExternal(void)
+HRESULT GuestSession::i_isStartedExternal(void)
 {
     AutoReadLock alock(this COMMA_LOCKVAL_SRC_POS);
 
     /** @todo Be a bit more informative. */
-    if (mData.mStatus != GuestSessionStatus_Started)
+    if (!i_isStarted())
         return setError(E_UNEXPECTED, tr("Session is not in started state"));
 
     return S_OK;
+}
+
+/**
+ * Returns whether a session status implies a terminated state or not.
+ *
+ * @returns \c true if it's a terminated state, or \c false if not.
+ */
+/* static */
+bool GuestSession::i_isTerminated(GuestSessionStatus_T enmStatus)
+{
+    switch (enmStatus)
+    {
+        case GuestSessionStatus_Terminated:
+            RT_FALL_THROUGH();
+        case GuestSessionStatus_TimedOutKilled:
+            RT_FALL_THROUGH();
+        case GuestSessionStatus_TimedOutAbnormally:
+            RT_FALL_THROUGH();
+        case GuestSessionStatus_Down:
+            RT_FALL_THROUGH();
+        case GuestSessionStatus_Error:
+            return true;
+
+        default:
+            break;
+    }
+
+    return false;
+}
+
+/**
+ * Returns whether the session is in a terminated state or not.
+ *
+ * @returns \c true if in a terminated state, or \c false if not.
+ */
+bool GuestSession::i_isTerminated(void) const
+{
+    return GuestSession::i_isTerminated(mData.mStatus);
 }
 
 /**
@@ -1758,7 +1786,7 @@ int GuestSession::i_onRemove(void)
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
-    int vrc = VINF_SUCCESS;
+    int vrc = i_objectsUnregister();
 
     /*
      * Note: The event source stuff holds references to this object,
@@ -2049,11 +2077,15 @@ int GuestSession::i_startSessionThreadTask(GuestSessionTaskInternalStart *pTask)
  * @return  VBox status code.
  * @retval  VERR_GSTCTL_MAX_OBJECTS_REACHED if the maximum of concurrent objects
  *          is reached.
+ * @param   pObject     Guest object to register (weak pointer). Optional.
  * @param   enmType     Session object type to register.
- * @param   pidObject   Where to return the object ID on success.
+ * @param   pidObject   Where to return the object ID on success. Optional.
  */
-int GuestSession::i_objectRegister(SESSIONOBJECTTYPE enmType, uint32_t *pidObject)
+int GuestSession::i_objectRegister(GuestObject *pObject, SESSIONOBJECTTYPE enmType, uint32_t *pidObject)
 {
+    /* pObject can be NULL. */
+    /* pidObject is optional. */
+
     /*
      * Pick a random bit as starting point.  If it's in use, search forward
      * for a free one, wrapping around.  We've reserved both the zero'th and
@@ -2083,6 +2115,7 @@ int GuestSession::i_objectRegister(SESSIONOBJECTTYPE enmType, uint32_t *pidObjec
 
     try
     {
+        mData.mObjects[idObject].pObject = pObject; /* Can be NULL. */
         mData.mObjects[idObject].enmType = enmType;
         mData.mObjects[idObject].msBirth = RTTimeMilliTS();
     }
@@ -2092,14 +2125,14 @@ int GuestSession::i_objectRegister(SESSIONOBJECTTYPE enmType, uint32_t *pidObjec
         return VERR_NO_MEMORY;
     }
 
-    alock.release();
+    if (pidObject)
+        *pidObject = idObject;
 
-    *pidObject = idObject;
     return VINF_SUCCESS;
 }
 
 /**
- * Unregisters an object from a session.
+ * Unregisters an object from the session objects list.
  *
  * @retval  VINF_SUCCESS on success.
  * @retval  VERR_NOT_FOUND if the object ID was not found.
@@ -2117,6 +2150,92 @@ int GuestSession::i_objectUnregister(uint32_t idObject)
     mData.mObjects.erase(ItObj);
 
     return rc;
+}
+
+/**
+ * Unregisters all objects from the session list.
+ *
+ * @returns VBox status code.
+ */
+int GuestSession::i_objectsUnregister(void)
+{
+    AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
+
+    LogFlowThisFunc(("Unregistering directories (%zu total)\n", mData.mDirectories.size()));
+
+    SessionDirectories::iterator itDirs;
+    while ((itDirs = mData.mDirectories.begin()) != mData.mDirectories.end())
+    {
+        alock.release();
+        i_directoryUnregister(itDirs->second);
+        alock.acquire();
+    }
+
+    Assert(mData.mDirectories.size() == 0);
+    mData.mDirectories.clear();
+
+    LogFlowThisFunc(("Unregistering files (%zu total)\n", mData.mFiles.size()));
+
+    SessionFiles::iterator itFiles;
+    while ((itFiles = mData.mFiles.begin()) != mData.mFiles.end())
+    {
+        alock.release();
+        i_fileUnregister(itFiles->second);
+        alock.acquire();
+    }
+
+    Assert(mData.mFiles.size() == 0);
+    mData.mFiles.clear();
+
+    LogFlowThisFunc(("Unregistering processes (%zu total)\n", mData.mProcesses.size()));
+
+    SessionProcesses::iterator itProcs;
+    while ((itProcs = mData.mProcesses.begin()) != mData.mProcesses.end())
+    {
+        alock.release();
+        i_processUnregister(itProcs->second);
+        alock.acquire();
+    }
+
+    Assert(mData.mProcesses.size() == 0);
+    mData.mProcesses.clear();
+
+    return VINF_SUCCESS;
+}
+
+/**
+ * Notifies all registered objects about a session status change.
+ *
+ * @returns VBox status code.
+ * @param   enmSessionStatus    Session status to notify objects about.
+ */
+int GuestSession::i_objectsNotifyAboutStatusChange(GuestSessionStatus_T enmSessionStatus)
+{
+    LogFlowThisFunc(("enmSessionStatus=%RU32\n", enmSessionStatus));
+
+    int vrc = VINF_SUCCESS;
+
+    SessionObjects::iterator itObjs = mData.mObjects.begin();
+    while (itObjs != mData.mObjects.end())
+    {
+        GuestObject *pObj = itObjs->second.pObject;
+        if (pObj) /* pObject can be NULL (weak pointer). */
+        {
+            int vrc2 = pObj->i_onSessionStatusChange(enmSessionStatus);
+            if (RT_SUCCESS(vrc))
+                vrc = vrc2;
+
+            /* If the session got terminated, make sure to cancel all wait events for
+             * the current object. */
+            if (i_isTerminated())
+                pObj->cancelWaitEvents();
+        }
+
+        ++itObjs;
+    }
+
+    LogFlowFuncLeaveRC(vrc);
+    return vrc;
 }
 
 int GuestSession::i_pathRename(const Utf8Str &strSource, const Utf8Str &strDest, uint32_t uFlags, int *prcGuest)
@@ -2295,7 +2414,7 @@ int GuestSession::i_processUnregister(GuestProcess *pProcess)
     LogFlowFunc(("Removing process ID=%RU32 (session %RU32, guest PID %RU32, now total %zu processes)\n",
                  idObject, mData.mSession.mID, uPID, mData.mProcesses.size()));
 
-    rc = pProcess->i_onRemove();
+    rc = pProcess->i_onUnregister();
     AssertRCReturn(rc, rc);
 
     mData.mProcesses.erase(itProcs);
@@ -2376,16 +2495,19 @@ int GuestSession::i_processCreateEx(GuestProcessStartupInfo &procInfo, ComObjPtr
 
     AutoWriteLock alock(this COMMA_LOCKVAL_SRC_POS);
 
-    /* Register a new object ID. */
-    uint32_t idObject;
-    int rc = i_objectRegister(SESSIONOBJECTTYPE_PROCESS, &idObject);
-    if (RT_FAILURE(rc))
-        return rc;
-
     /* Create the process object. */
     HRESULT hr = pProcess.createObject();
     if (FAILED(hr))
         return VERR_COM_UNEXPECTED;
+
+    /* Register a new object ID. */
+    uint32_t idObject;
+    int rc = i_objectRegister(pProcess, SESSIONOBJECTTYPE_PROCESS, &idObject);
+    if (RT_FAILURE(rc))
+    {
+        pProcess.setNull();
+        return rc;
+    }
 
     rc = pProcess->init(mParent->i_getConsole() /* Console */, this /* Session */, idObject,
                         procInfo, mData.mpBaseEnvironment);
@@ -2513,10 +2635,15 @@ int GuestSession::i_setSessionStatus(GuestSessionStatus_T sessionStatus, int ses
     else
         AssertMsg(RT_SUCCESS(sessionRc), ("Guest rc must not be an error (%Rrc)\n", sessionRc));
 
+    int vrc = VINF_SUCCESS;
+
     if (mData.mStatus != sessionStatus)
     {
         mData.mStatus = sessionStatus;
         mData.mRC     = sessionRc;
+
+        /* Make sure to notify all underlying objects first. */
+        vrc = i_objectsNotifyAboutStatusChange(sessionStatus);
 
         ComObjPtr<VirtualBoxErrorInfo> errorInfo;
         HRESULT hr = errorInfo.createObject();
@@ -2530,7 +2657,8 @@ int GuestSession::i_setSessionStatus(GuestSessionStatus_T sessionStatus, int ses
                                           mData.mSession.mID, sessionStatus, errorInfo);
     }
 
-    return VINF_SUCCESS;
+    LogFlowFuncLeaveRC(vrc);
+    return vrc;
 }
 
 int GuestSession::i_signalWaiters(GuestSessionWaitResult_T enmWaitResult, int rc /*= VINF_SUCCESS */)
@@ -3139,7 +3267,7 @@ HRESULT GuestSession::directoryCreate(const com::Utf8Str &aPath, ULONG aMode,
                 return setError(E_INVALIDARG, tr("Unknown flags (%#x)"), fFlags);
     }
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3187,7 +3315,7 @@ HRESULT GuestSession::directoryCreateTemp(const com::Utf8Str &aTemplateName, ULO
     if (RT_UNLIKELY((aPath.c_str()) == NULL || *(aPath.c_str()) == '\0'))
         return setError(E_INVALIDARG, tr("No directory name specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3221,7 +3349,7 @@ HRESULT GuestSession::directoryExists(const com::Utf8Str &aPath, BOOL aFollowSym
     if (RT_UNLIKELY((aPath.c_str()) == NULL || *(aPath.c_str()) == '\0'))
         return setError(E_INVALIDARG, tr("No directory to check existence for specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3281,7 +3409,7 @@ HRESULT GuestSession::directoryOpen(const com::Utf8Str &aPath, const com::Utf8St
             return setError(E_INVALIDARG, tr("Open flags (%#x) not implemented yet"), fFlags);
     }
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3329,7 +3457,7 @@ HRESULT GuestSession::directoryRemove(const com::Utf8Str &aPath)
     if (RT_UNLIKELY((aPath.c_str()) == NULL || *(aPath.c_str()) == '\0'))
         return setError(E_INVALIDARG, tr("No directory to remove specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3394,7 +3522,7 @@ HRESULT GuestSession::directoryRemoveRecursive(const com::Utf8Str &aPath, const 
         }
     }
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3593,7 +3721,7 @@ HRESULT GuestSession::fileExists(const com::Utf8Str &aPath, BOOL aFollowSymlinks
     if (RT_UNLIKELY((aPath.c_str()) == NULL || *(aPath.c_str()) == '\0'))
         return S_OK;
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3657,7 +3785,7 @@ HRESULT GuestSession::fileOpenEx(const com::Utf8Str &aPath, FileAccessMode_T aAc
     if (RT_UNLIKELY((aPath.c_str()) == NULL || *(aPath.c_str()) == '\0'))
         return setError(E_INVALIDARG, tr("No file to open specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3767,7 +3895,7 @@ HRESULT GuestSession::fileQuerySize(const com::Utf8Str &aPath, BOOL aFollowSymli
     if (aPath.isEmpty())
         return setError(E_INVALIDARG, tr("No path specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3796,7 +3924,7 @@ HRESULT GuestSession::fsObjExists(const com::Utf8Str &aPath, BOOL aFollowSymlink
     if (aPath.isEmpty())
         return setError(E_INVALIDARG, tr("No path specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3840,7 +3968,7 @@ HRESULT GuestSession::fsObjQueryInfo(const com::Utf8Str &aPath, BOOL aFollowSyml
     if (aPath.isEmpty())
         return setError(E_INVALIDARG, tr("No path specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3880,7 +4008,7 @@ HRESULT GuestSession::fsObjRemove(const com::Utf8Str &aPath)
     if (RT_UNLIKELY(aPath.isEmpty()))
         return setError(E_INVALIDARG, tr("No path specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -3922,7 +4050,7 @@ HRESULT GuestSession::fsObjRename(const com::Utf8Str &aSource,
     if (RT_UNLIKELY(aDestination.isEmpty()))
         return setError(E_INVALIDARG, tr("No destination path specified"));
 
-    HRESULT hrc = i_isReadyExternal();
+    HRESULT hrc = i_isStartedExternal();
     if (FAILED(hrc))
         return hrc;
 
@@ -4022,7 +4150,7 @@ HRESULT GuestSession::processCreateEx(const com::Utf8Str &aExecutable, const std
     AutoCaller autoCaller(this);
     if (FAILED(autoCaller.rc())) return autoCaller.rc();
 
-    HRESULT hr = i_isReadyExternal();
+    HRESULT hr = i_isStartedExternal();
     if (FAILED(hr))
         return hr;
 

@@ -1,4 +1,4 @@
-/* $Id: HMVMXR0.cpp 77563 2019-03-05 05:47:43Z vboxsync $ */
+/* $Id: HMVMXR0.cpp 77578 2019-03-06 10:02:07Z vboxsync $ */
 /** @file
  * HM VMX (Intel VT-x) - Host Context Ring-0.
  */
@@ -5801,6 +5801,37 @@ DECLINLINE(void) hmR0VmxSetPendingEvent(PVMCPU pVCpu, uint32_t u32IntInfo, uint3
 
 
 /**
+ * Sets an external interrupt as pending-for-injection into the VM.
+ *
+ * @param   pVCpu           The cross context virtual CPU structure.
+ * @param   u8Interrupt     The external interrupt vector.
+ */
+DECLINLINE(void) hmR0VmxSetPendingExtInt(PVMCPU pVCpu, uint8_t u8Interrupt)
+{
+    uint32_t const u32IntInfo = RT_BF_MAKE(VMX_BF_EXIT_INT_INFO_VECTOR,          u8Interrupt)
+                              | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_TYPE,           VMX_ENTRY_INT_INFO_TYPE_EXT_INT)
+                              | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_ERR_CODE_VALID, 0)
+                              | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_VALID,          1);
+    hmR0VmxSetPendingEvent(pVCpu, u32IntInfo, 0 /* cbInstr */, 0 /* u32ErrCode */, 0 /* GCPtrFaultAddress */);
+}
+
+
+/**
+ * Sets an NMI (\#NMI) exception as pending-for-injection into the VM.
+ *
+ * @param   pVCpu           The cross context virtual CPU structure.
+ */
+DECLINLINE(void) hmR0VmxSetPendingXcptNmi(PVMCPU pVCpu)
+{
+    uint32_t const u32IntInfo = RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_VECTOR,         X86_XCPT_NMI)
+                              | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_TYPE,           VMX_ENTRY_INT_INFO_TYPE_NMI)
+                              | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_ERR_CODE_VALID, 0)
+                              | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_VALID,          1);
+    hmR0VmxSetPendingEvent(pVCpu, u32IntInfo, 0 /* cbInstr */, 0 /* u32ErrCode */, 0 /* GCPtrFaultAddress */);
+}
+
+
+/**
  * Sets a double-fault (\#DF) exception as pending-for-injection into the VM.
  *
  * @param   pVCpu           The cross context virtual CPU structure.
@@ -5811,7 +5842,7 @@ DECLINLINE(void) hmR0VmxSetPendingXcptDF(PVMCPU pVCpu)
                               | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_TYPE,           VMX_EXIT_INT_INFO_TYPE_HW_XCPT)
                               | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_ERR_CODE_VALID, 1)
                               | RT_BF_MAKE(VMX_BF_ENTRY_INT_INFO_VALID,          1);
-    hmR0VmxSetPendingEvent(pVCpu, u32IntInfo,  0 /* cbInstr */, 0 /* u32ErrCode */, 0 /* GCPtrFaultAddress */);
+    hmR0VmxSetPendingEvent(pVCpu, u32IntInfo, 0 /* cbInstr */, 0 /* u32ErrCode */, 0 /* GCPtrFaultAddress */);
 }
 
 
@@ -6083,7 +6114,7 @@ static VBOXSTRICTRC hmR0VmxDecodeMemOperand(PVMCPU pVCpu, uint32_t uExitInstrInf
  */
 static VBOXSTRICTRC hmR0VmxCheckExitDueToVmxInstr(PVMCPU pVCpu, uint32_t uExitReason)
 {
-    HMVMX_CPUMCTX_ASSERT(pVCpu, CPUMCTX_EXTRN_CR4 | CPUMCTX_EXTRN_CR0 | CPUMCTX_EXTRN_RFLAGS | CPUMCTX_EXTRN_SS
+    HMVMX_CPUMCTX_ASSERT(pVCpu, CPUMCTX_EXTRN_CR0 | CPUMCTX_EXTRN_RFLAGS | CPUMCTX_EXTRN_SS
                               | CPUMCTX_EXTRN_CS  | CPUMCTX_EXTRN_EFER);
 
     if (   CPUMIsGuestInRealOrV86ModeEx(&pVCpu->cpum.GstCtx)
@@ -6097,6 +6128,8 @@ static VBOXSTRICTRC hmR0VmxCheckExitDueToVmxInstr(PVMCPU pVCpu, uint32_t uExitRe
 
     if (uExitReason == VMX_EXIT_VMXON)
     {
+        HMVMX_CPUMCTX_ASSERT(pVCpu, CPUMCTX_EXTRN_CR4);
+
         /*
          * We check CR4.VMXE because it is required to be always set while in VMX operation
          * by physical CPUs and our CR4 read shadow is only consulted when executing specific
@@ -6517,7 +6550,7 @@ DECLINLINE(int) hmR0VmxImportGuestIntrState(PVMCPU pVCpu)
 
     /*
      * We additionally have a requirement to import RIP, RFLAGS depending on whether we
-     * might need them in hmR0VmxEvaluatePendingEvent().
+     * might need them in while evaluating pending events before VM-entry.
      */
     if (!u32Val)
     {
@@ -6921,6 +6954,12 @@ VMMR0DECL(int) VMXR0ImportStateOnDemand(PVMCPU pVCpu, uint64_t fWhat)
 static VBOXSTRICTRC hmR0VmxCheckForceFlags(PVMCPU pVCpu, bool fStepping)
 {
     Assert(VMMRZCallRing3IsEnabled(pVCpu));
+
+    /*
+     * Update pending interrupts into the APIC's IRR.
+     */
+    if (VMCPU_FF_TEST_AND_CLEAR(pVCpu, VMCPU_FF_UPDATE_APIC))
+        APICUpdatePendingInterrupts(pVCpu);
 
     /*
      * Anything pending?  Should be more likely than not if we're doing a good job.
@@ -7537,9 +7576,6 @@ static uint32_t hmR0VmxEvaluatePendingEvent(PVMCPU pVCpu)
     Assert(!fBlockSti || pCtx->eflags.Bits.u1IF);                  /* Cannot set block-by-STI when interrupts are disabled. */
     Assert(!TRPMHasTrap(pVCpu));
 
-    if (VMCPU_FF_TEST_AND_CLEAR(pVCpu, VMCPU_FF_UPDATE_APIC))
-        APICUpdatePendingInterrupts(pVCpu);
-
     /*
      * Toggling of interrupt force-flags here is safe since we update TRPM on premature exits
      * to ring-3 before executing guest code, see hmR0VmxExitToRing3(). We must NOT restore these force-flags.
@@ -7553,12 +7589,9 @@ static uint32_t hmR0VmxEvaluatePendingEvent(PVMCPU pVCpu)
             && !fBlockSti
             && !fBlockMovSS)
         {
-            Log4Func(("Pending NMI\n"));
-            uint32_t u32IntInfo = X86_XCPT_NMI | VMX_EXIT_INT_INFO_VALID;
-            u32IntInfo         |= (VMX_EXIT_INT_INFO_TYPE_NMI << VMX_EXIT_INT_INFO_TYPE_SHIFT);
-
-            hmR0VmxSetPendingEvent(pVCpu, u32IntInfo, 0 /* cbInstr */, 0 /* u32ErrCode */, 0 /* GCPtrFaultAddress */);
+            hmR0VmxSetPendingXcptNmi(pVCpu);
             VMCPU_FF_CLEAR(pVCpu, VMCPU_FF_INTERRUPT_NMI);
+            Log4Func(("Pending NMI\n"));
         }
         else
             hmR0VmxSetNmiWindowExitVmcs(pVCpu);
@@ -7583,12 +7616,8 @@ static uint32_t hmR0VmxEvaluatePendingEvent(PVMCPU pVCpu)
             rc = PDMGetInterrupt(pVCpu, &u8Interrupt);
             if (RT_SUCCESS(rc))
             {
-                Log4Func(("Pending external interrupt u8Interrupt=%#x\n", u8Interrupt));
-                uint32_t u32IntInfo = u8Interrupt
-                                    | VMX_EXIT_INT_INFO_VALID
-                                    | (VMX_EXIT_INT_INFO_TYPE_EXT_INT << VMX_EXIT_INT_INFO_TYPE_SHIFT);
-
-                hmR0VmxSetPendingEvent(pVCpu, u32IntInfo, 0 /* cbInstr */, 0 /* u32ErrCode */, 0 /* GCPtrfaultAddress */);
+                hmR0VmxSetPendingExtInt(pVCpu, u8Interrupt);
+                Log4Func(("Pending external interrupt vector %#x\n", u8Interrupt));
             }
             else if (rc == VERR_APIC_INTR_MASKED_BY_TPR)
             {
@@ -8418,6 +8447,41 @@ static VBOXSTRICTRC hmR0VmxExportGuestStateOptimal(PVMCPU pVCpu)
 
 
 /**
+ * Setup the APIC-access page for virtualizing APIC access.
+ *
+ * This can cause a longjumps to R3 due to the acquisition of the PGM lock, hence
+ * this not done as part of exporting guest state, see @bugref{8721}.
+ *
+ * @returns VBox status code.
+ * @param   pVCpu           The cross context virtual CPU structure.
+ */
+static int hmR0VmxMapHCApicAccessPage(PVMCPU pVCpu)
+{
+    PVM pVM = pVCpu->CTX_SUFF(pVM);
+    uint64_t const u64MsrApicBase = APICGetBaseMsrNoCheck(pVCpu);
+
+    Assert(PDMHasApic(pVM));
+    Assert(u64MsrApicBase);
+
+    RTGCPHYS const GCPhysApicBase = u64MsrApicBase & PAGE_BASE_GC_MASK;
+    Log4Func(("Mappping HC APIC-access page at %#RGp\n", GCPhysApicBase));
+
+    /* Unalias any existing mapping. */
+    int rc = PGMHandlerPhysicalReset(pVM, GCPhysApicBase);
+    AssertRCReturn(rc, rc);
+
+    /* Map the HC APIC-access page in place of the MMIO page, also updates the shadow page tables if necessary. */
+    Assert(pVM->hm.s.vmx.HCPhysApicAccess);
+    rc = IOMMMIOMapMMIOHCPage(pVM, pVCpu, GCPhysApicBase, pVM->hm.s.vmx.HCPhysApicAccess, X86_PTE_RW | X86_PTE_P);
+    AssertRCReturn(rc, rc);
+
+    /* Update the per-VCPU cache of the APIC base MSR. */
+    pVCpu->hm.s.vmx.u64MsrApicBase = u64MsrApicBase;
+    return VINF_SUCCESS;
+}
+
+
+/**
  * Does the preparations before executing guest code in VT-x.
  *
  * This may cause longjmps to ring-3 and may even result in rescheduling to the
@@ -8463,7 +8527,9 @@ static VBOXSTRICTRC hmR0VmxPreRunGuest(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient
     PGMRZDynMapFlushAutoSet(pVCpu);
 #endif
 
-    /* Check force flag actions that might require us to go back to ring-3. */
+    /*
+     * Check and process force flag actions, some of which might require us to go back to ring-3.
+     */
     VBOXSTRICTRC rcStrict = hmR0VmxCheckForceFlags(pVCpu, fStepping);
     if (rcStrict == VINF_SUCCESS)
     { /* FFs doesn't get set all the time. */ }
@@ -8471,35 +8537,15 @@ static VBOXSTRICTRC hmR0VmxPreRunGuest(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient
         return rcStrict;
 
     /*
-     * Setup the virtualized-APIC accesses.
-     *
-     * Note! This can cause a longjumps to R3 due to the acquisition of the PGM lock
-     * in both PGMHandlerPhysicalReset() and IOMMMIOMapMMIOHCPage(), see @bugref{8721}.
-     *
-     * This is the reason we do it here and not in hmR0VmxExportGuestState().
+     * Virtualize memory-mapped accesses to the physical APIC (may take locks).
      */
     PVM pVM = pVCpu->CTX_SUFF(pVM);
     if (   !pVCpu->hm.s.vmx.u64MsrApicBase
         && (pVCpu->hm.s.vmx.Ctls.u32ProcCtls2 & VMX_PROC_CTLS2_VIRT_APIC_ACCESS)
         && PDMHasApic(pVM))
     {
-        uint64_t const u64MsrApicBase = APICGetBaseMsrNoCheck(pVCpu);
-        Assert(u64MsrApicBase);
-        Assert(pVM->hm.s.vmx.HCPhysApicAccess);
-
-        RTGCPHYS const GCPhysApicBase = u64MsrApicBase & PAGE_BASE_GC_MASK;
-
-        /* Unalias any existing mapping. */
-        int rc = PGMHandlerPhysicalReset(pVM, GCPhysApicBase);
+        int rc = hmR0VmxMapHCApicAccessPage(pVCpu);
         AssertRCReturn(rc, rc);
-
-        /* Map the HC APIC-access page in place of the MMIO page, also updates the shadow page tables if necessary. */
-        Log4Func(("Mapped HC APIC-access page at %#RGp\n", GCPhysApicBase));
-        rc = IOMMMIOMapMMIOHCPage(pVM, pVCpu, GCPhysApicBase, pVM->hm.s.vmx.HCPhysApicAccess, X86_PTE_RW | X86_PTE_P);
-        AssertRCReturn(rc, rc);
-
-        /* Update the per-VCPU cache of the APIC base MSR. */
-        pVCpu->hm.s.vmx.u64MsrApicBase = u64MsrApicBase;
     }
 
     if (TRPMHasTrap(pVCpu))
@@ -8967,6 +9013,20 @@ static VBOXSTRICTRC hmR0VmxRunGuestCodeNormal(PVMCPU pVCpu)
     return rcStrict;
 }
 
+#ifdef VBOX_WITH_NESTED_HWVIRT_VMX
+/**
+ * Runs the nested-guest code using VT-x the normal way.
+ *
+ * @returns VBox status code.
+ * @param   pVCpu       The cross context virtual CPU structure.
+ * @sa      hmR0VmxRunGuestCodeNormal.
+ */
+static VBOXSTRICTRC hmR0VmxRunGuestCodeNested(PVMCPU pVCpu)
+{
+    RT_NOREF(pVCpu);
+    return VERR_NOT_IMPLEMENTED;
+}
+#endif /* VBOX_WITH_NESTED_HWVIRT_VMX */
 
 
 /** @name Execution loop for single stepping, DBGF events and expensive Dtrace
@@ -10297,13 +10357,28 @@ VMMR0DECL(VBOXSTRICTRC) VMXR0RunGuestCode(PVMCPU pVCpu)
     VMMRZCallRing3SetNotification(pVCpu, hmR0VmxCallRing3Callback, pCtx);
 
     VBOXSTRICTRC rcStrict;
-    if (   !pVCpu->hm.s.fUseDebugLoop
-        && (!VBOXVMM_ANY_PROBES_ENABLED() || !hmR0VmxAnyExpensiveProbesEnabled())
-        && !DBGFIsStepping(pVCpu)
-        && !pVCpu->CTX_SUFF(pVM)->dbgf.ro.cEnabledInt3Breakpoints)
-        rcStrict = hmR0VmxRunGuestCodeNormal(pVCpu);
+#ifdef VBOX_WITH_NESTED_HWVIRT_VMX
+    bool const fInNestedGuestMode = CPUMIsGuestInVmxNonRootMode(pCtx);
+#else
+    bool const fInNestedGuestMode = false;
+#endif
+    if (!fInNestedGuestMode)
+    {
+        if (   !pVCpu->hm.s.fUseDebugLoop
+            && (!VBOXVMM_ANY_PROBES_ENABLED() || !hmR0VmxAnyExpensiveProbesEnabled())
+            && !DBGFIsStepping(pVCpu)
+            && !pVCpu->CTX_SUFF(pVM)->dbgf.ro.cEnabledInt3Breakpoints)
+            rcStrict = hmR0VmxRunGuestCodeNormal(pVCpu);
+        else
+            rcStrict = hmR0VmxRunGuestCodeDebug(pVCpu);
+    }
+#ifdef VBOX_WITH_NESTED_HWVIRT_VMX
     else
-        rcStrict = hmR0VmxRunGuestCodeDebug(pVCpu);
+        rcStrict = VINF_VMX_VMLAUNCH_VMRESUME;
+
+    if (rcStrict == VINF_VMX_VMLAUNCH_VMRESUME)
+        rcStrict = hmR0VmxRunGuestCodeNested(pVCpu);
+#endif
 
     if (rcStrict == VERR_EM_INTERPRETER)
         rcStrict = VINF_EM_RAW_EMULATE_INSTR;
@@ -11273,7 +11348,7 @@ HMVMX_EXIT_NSRC_DECL hmR0VmxExitIntWindow(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransi
     /* Indicate that we no longer need to VM-exit when the guest is ready to receive interrupts, it is now ready. */
     hmR0VmxClearIntWindowExitVmcs(pVCpu);
 
-    /* Deliver the pending interrupts via hmR0VmxEvaluatePendingEvent() and resume guest execution. */
+    /* Evaluate and deliver pending events and resume guest execution. */
     STAM_COUNTER_INC(&pVCpu->hm.s.StatExitIntWindow);
     return VINF_SUCCESS;
 }
@@ -11314,7 +11389,7 @@ HMVMX_EXIT_NSRC_DECL hmR0VmxExitNmiWindow(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransi
     /* Indicate that we no longer need to VM-exit when the guest is ready to receive NMIs, it is now ready */
     hmR0VmxClearNmiWindowExitVmcs(pVCpu);
 
-    /* Deliver the pending NMI via hmR0VmxEvaluatePendingEvent() and resume guest execution. */
+    /* Evaluate and deliver pending events and resume guest execution. */
     return VINF_SUCCESS;
 }
 
@@ -13489,7 +13564,10 @@ HMVMX_EXIT_DECL hmR0VmxExitVmlaunch(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
 
     VBOXSTRICTRC rcStrict = IEMExecDecodedVmlaunchVmresume(pVCpu, pVmxTransient->cbInstr, VMXINSTRID_VMLAUNCH);
     if (RT_LIKELY(rcStrict == VINF_SUCCESS))
+    {
+        rcStrict = VINF_VMX_VMLAUNCH_VMRESUME;
         ASMAtomicUoOrU64(&pVCpu->hm.s.fCtxChanged, HM_CHANGED_ALL_GUEST);
+    }
     Assert(rcStrict != VINF_IEM_RAISED_XCPT);
     return rcStrict;
 }
@@ -13619,7 +13697,10 @@ HMVMX_EXIT_DECL hmR0VmxExitVmresume(PVMCPU pVCpu, PVMXTRANSIENT pVmxTransient)
 
     VBOXSTRICTRC rcStrict = IEMExecDecodedVmlaunchVmresume(pVCpu, pVmxTransient->cbInstr, VMXINSTRID_VMRESUME);
     if (RT_LIKELY(rcStrict == VINF_SUCCESS))
+    {
+        rcStrict = VINF_VMX_VMLAUNCH_VMRESUME;
         ASMAtomicUoOrU64(&pVCpu->hm.s.fCtxChanged, HM_CHANGED_ALL_GUEST);
+    }
     Assert(rcStrict != VINF_IEM_RAISED_XCPT);
     return rcStrict;
 }
