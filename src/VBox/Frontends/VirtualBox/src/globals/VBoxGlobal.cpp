@@ -1,4 +1,4 @@
-/* $Id: VBoxGlobal.cpp 77335 2019-02-15 12:56:02Z vboxsync $ */
+/* $Id: VBoxGlobal.cpp 77345 2019-02-18 12:49:50Z vboxsync $ */
 /** @file
  * VBox Qt GUI - VBoxGlobal class implementation.
  */
@@ -2834,9 +2834,9 @@ int VBoxGlobal::openMediumSelectorDialog(QWidget *pParent, UIMediumDeviceType  e
     return static_cast<int>(returnCode);
 }
 
-QUuid VBoxGlobal::createHDWithNewHDWizard(QWidget *pParent, const QString &strMachineGuestOSTypeId  /* = QString() */,
-                                          const QString &strMachineFolder /* = QString() */,
-                                          const QString &strMachineName /* = QString() */)
+QUuid VBoxGlobal::createHDWithNewHDWizard(QWidget *pParent,  const QString &strMachineFolder /* = QString() */,
+                                          const QString &strMachineName /* = QString() */,
+                                          const QString &strMachineGuestOSTypeId  /* = QString() */)
 {
     /* Initialize variables: */
     QString strDefaultFolder(strMachineFolder);
@@ -2886,31 +2886,8 @@ void VBoxGlobal::prepareStorageMenu(QMenu &menu,
                                                         QString(), pListener, pszSlotName);
     pActionOpenExistingMedium->setData(QVariant::fromValue(UIMediumTarget(strControllerName, comCurrentAttachment.GetPort(),
                                                                           comCurrentAttachment.GetDevice(), enmMediumType)));
-    pActionOpenExistingMedium->setText(QApplication::translate("UIMachineSettingsStorage", "Choose disk image...",
+    pActionOpenExistingMedium->setText(QApplication::translate("UIMachineSettingsStorage", "Choose/Create a disk image...",
                                                                "This is used for hard disks, optical media and floppies"));
-
-    /* Prepare create floppy disk action: */
-    if (enmMediumType == UIMediumDeviceType_Floppy)
-    {
-        QAction *pActionCreateFloppy = menu.addAction(UIIconPool::iconSet(":/fd_add_16px.png"),
-                                                      QString(), pListener, pszSlotName);
-        pActionCreateFloppy->setData(QVariant::fromValue(UIMediumTarget(strControllerName, comCurrentAttachment.GetPort(),
-                                                                        comCurrentAttachment.GetDevice(), enmMediumType,
-                                                                        UIMediumTarget::UIMediumTargetType_CreateFloppyDisk)));
-        pActionCreateFloppy->setText(QApplication::translate("UIMachineSettingsStorage", "Create a new floppy disk...",
-                                                             "This is used to create a new floppy disk"));
-    }
-    /* Prepare ad-hoc-viso action for DVD-ROMs: */
-    if (enmMediumType == UIMediumDeviceType_DVD)
-    {
-        QAction *pActionAdHocViso = menu.addAction(UIIconPool::iconSet(":/select_file_16px.png"),
-                                                   QString(), pListener, pszSlotName);
-        pActionAdHocViso->setData(QVariant::fromValue(UIMediumTarget(strControllerName, comCurrentAttachment.GetPort(),
-                                                                     comCurrentAttachment.GetDevice(), enmMediumType,
-                                                                     UIMediumTarget::UIMediumTargetType_CreateAdHocVISO)));
-        pActionAdHocViso->setText(QApplication::translate("UIMachineSettingsStorage", "Create ad hoc VISO...",
-                                                          "This is used for optical media"));
-    }
 
 
     /* Insert separator: */
@@ -3073,7 +3050,14 @@ void VBoxGlobal::updateMachineStorage(const CMachine &comConstMachine, const UIM
                 const QString strMachineFolder(QFileInfo(comConstMachine.GetSettingsFilePath()).absolutePath());
                 QUuid uMediumID;
                 if (target.type == UIMediumTarget::UIMediumTargetType_WithID)
-                    uMediumID = openMediumWithFileOpenDialog(target.mediumType, windowManager().mainWindowShown(), strMachineFolder);
+                {
+                    int iDialogReturn = openMediumSelectorDialog(windowManager().mainWindowShown(), target.mediumType, uMediumID,
+                                                                 strMachineFolder, comConstMachine.GetName(),
+                                                                 comConstMachine.GetOSTypeId(), true /*fEnableCreate */);
+                    if (iDialogReturn == UIMediumSelector::ReturnCode_LeftEmpty &&
+                        (target.mediumType == UIMediumDeviceType_DVD || target.mediumType == UIMediumDeviceType_Floppy))
+                        fMount = false;
+                }
                 else if(target.type == UIMediumTarget::UIMediumTargetType_CreateAdHocVISO)
                     uMediumID = createVisoMediumWithVisoCreator(windowManager().mainWindowShown(), strMachineFolder, comConstMachine.GetName());
 
@@ -3086,8 +3070,10 @@ void VBoxGlobal::updateMachineStorage(const CMachine &comConstMachine, const UIM
                 /* Accept new medium ID: */
                 if (!uMediumID.isNull())
                     uNewID = uMediumID;
-                /* Else just exit: */
-                else return;
+                else
+                    /* Else just exit in case left empty is not chosen in medium selector dialog: */
+                    if (fMount)
+                        return;
             }
             /* Use medium ID which was passed: */
             else if (!target.data.isNull() && target.data != uCurrentID.toString())
@@ -3102,7 +3088,7 @@ void VBoxGlobal::updateMachineStorage(const CMachine &comConstMachine, const UIM
             uActualID = fMount ? uNewID : uCurrentID;
             break;
         }
-        /* Do we have a resent location? */
+        /* Do we have a recent location? */
         case UIMediumTarget::UIMediumTargetType_WithLocation:
         {
             /* Open medium by location and get new medium ID if any: */

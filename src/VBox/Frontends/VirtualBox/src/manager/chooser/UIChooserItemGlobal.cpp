@@ -1,4 +1,4 @@
-/* $Id: UIChooserItemGlobal.cpp 77061 2019-01-30 18:12:57Z vboxsync $ */
+/* $Id: UIChooserItemGlobal.cpp 77347 2019-02-18 13:26:44Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIChooserItemGlobal class implementation.
  */
@@ -34,8 +34,9 @@
 
 
 UIChooserItemGlobal::UIChooserItemGlobal(UIChooserItem *pParent,
+                                         bool fFavorite,
                                          int iPosition /* = -1 */)
-    : UIChooserItem(pParent, pParent->isTemporary(), 0, 100)
+    : UIChooserItem(pParent, fFavorite, pParent->isTemporary(), 0, 100)
     , m_iPosition(iPosition)
     , m_iDefaultLightnessMin(0)
     , m_iDefaultLightnessMax(0)
@@ -51,9 +52,10 @@ UIChooserItemGlobal::UIChooserItemGlobal(UIChooserItem *pParent,
 }
 
 UIChooserItemGlobal::UIChooserItemGlobal(UIChooserItem *pParent,
+                                         bool fFavorite,
                                          UIChooserItemGlobal *pCopyFrom,
                                          int iPosition /* = -1 */)
-    : UIChooserItem(pParent, pParent->isTemporary(), 0, 100)
+    : UIChooserItem(pParent, fFavorite, pParent->isTemporary(), 0, 100)
     , m_iPosition(iPosition)
     , m_iDefaultLightnessMin(0)
     , m_iDefaultLightnessMax(0)
@@ -195,7 +197,7 @@ QString UIChooserItemGlobal::definition() const
     return QString("n=%1").arg("GLOBAL");
 }
 
-void UIChooserItemGlobal::addItem(UIChooserItem *, int)
+void UIChooserItemGlobal::addItem(UIChooserItem *, bool, int)
 {
     AssertMsgFailed(("Global graphics item do NOT support children!"));
 }
@@ -389,7 +391,7 @@ void UIChooserItemGlobal::prepare()
 
     /* Add item to the parent: */
     AssertPtrReturnVoid(parentItem());
-    parentItem()->addItem(this, m_iPosition);
+    parentItem()->addItem(this, isFavorite(), m_iPosition);
 
     /* Configure connections: */
     connect(gpManager, &UIVirtualBoxManager::sigWindowRemapped,
