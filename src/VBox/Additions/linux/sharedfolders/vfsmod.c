@@ -1,4 +1,4 @@
-/* $Id: vfsmod.c 77458 2019-02-25 14:40:13Z vboxsync $ */
+/* $Id: vfsmod.c 77515 2019-02-28 22:35:07Z vboxsync $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, module init/term, super block management.
  */
@@ -30,9 +30,11 @@
 
 /**
  * @note Anyone wishing to make changes here might wish to take a look at
- *  https://github.com/torvalds/linux/blob/master/Documentation/filesystems/vfs.txt
+ * https://github.com/torvalds/linux/blob/master/Documentation/filesystems/vfs.txt
  * which seems to be the closest there is to official documentation on
  * writing filesystem drivers for Linux.
+ *
+ * See also: http://us1.samba.org/samba/ftp/cifs-cvs/ols2006-fs-tutorial-smf.odp
  */
 
 #include "vfsmod.h"
@@ -74,7 +76,14 @@ static struct super_operations sf_super_ops;
  */
 static void sf_glob_copy_remount_options(struct sf_glob_info *sf_g, struct vbsf_mount_info_new *info)
 {
-	sf_g->ttl = info->ttl;
+	sf_g->ttl_msec = info->ttl;
+	if (info->ttl > 0)
+		sf_g->ttl = msecs_to_jiffies(info->ttl);
+	else if (info->ttl == 0 || info->ttl != -1)
+		sf_g->ttl = sf_g->ttl_msec = 0;
+	else
+		sf_g->ttl = msecs_to_jiffies(VBSF_DEFAULT_TTL_MS);
+
 	sf_g->uid = info->uid;
 	sf_g->gid = info->gid;
 
@@ -309,20 +318,19 @@ static int sf_read_super_aux(struct super_block *sb, void *data, int flags)
 	sb->s_magic = 0xface;
 	sb->s_blocksize = 1024;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 3)
-	/* Required for seek/sendfile.
-	 *
-	 * Must by less than or equal to INT64_MAX despite the fact that the
-	 * declaration of this variable is unsigned long long. See determination
-	 * of 'loff_t max' in fs/read_write.c / do_sendfile(). I don't know the
-	 * correct limit but MAX_LFS_FILESIZE (8TB-1 on 32-bit boxes) takes the
-	 * page cache into account and is the suggested limit. */
+	/* Required for seek/sendfile (see 'loff_t max' in fs/read_write.c / do_sendfile()). */
 # if defined MAX_LFS_FILESIZE
 	sb->s_maxbytes = MAX_LFS_FILESIZE;
+# elif BITS_PER_LONG == 32
+	sb->s_maxbytes = (loff_t)ULONG_MAX << PAGE_SHIFT;
 # else
-	sb->s_maxbytes = 0x7fffffffffffffffULL;
+	sb->s_maxbytes = INT64_MAX;
 # endif
 #endif
 	sb->s_op = &sf_super_ops;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
+	sb->s_d_op = &sf_dentry_ops;
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 25)
 	iroot = iget_locked(sb, 0);
@@ -344,7 +352,7 @@ static int sf_read_super_aux(struct super_block *sb, void *data, int flags)
 		goto fail4;
 	}
 
-	sf_init_inode(sf_g, iroot, &fsinfo);
+	sf_init_inode(iroot, sf_i, &fsinfo, sf_g);
 	SET_INODE_INFO(iroot, sf_i);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 25)
@@ -518,7 +526,7 @@ static int sf_remount_fs(struct super_block *sb, int *flags, char *data)
 	sf_i = GET_INODE_INFO(iroot);
 	err = sf_stat(__func__, sf_g, sf_i->path, &fsinfo, 0);
 	BUG_ON(err != 0);
-	sf_init_inode(sf_g, iroot, &fsinfo);
+	sf_init_inode(iroot, sf_i, &fsinfo, sf_g);
 	/*unlock_new_inode(iroot); */
 	return 0;
 #else  /* LINUX_VERSION_CODE < 2.4.23 */
@@ -526,7 +534,12 @@ static int sf_remount_fs(struct super_block *sb, int *flags, char *data)
 #endif /* LINUX_VERSION_CODE < 2.4.23 */
 }
 
-/** Show mount options. */
+/**
+ * Show mount options.
+ *
+ * This is needed by the VBoxService automounter in order for it to pick up
+ * the the 'tag' option value it sets on its mount.
+ */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
 static int sf_show_options(struct seq_file *m, struct vfsmount *mnt)
 #else
@@ -540,16 +553,15 @@ static int sf_show_options(struct seq_file *m, struct dentry *root)
 #endif
 	struct sf_glob_info *sf_g = GET_GLOB_INFO(sb);
 	if (sf_g) {
-		seq_printf(m, ",uid=%u,gid=%u,ttl=%u,dmode=0%o,fmode=0%o,dmask=0%o,fmask=0%o,maxiopages=%u",
-			   sf_g->uid, sf_g->gid, sf_g->ttl, sf_g->dmode, sf_g->fmode, sf_g->dmask,
+		seq_printf(m, ",uid=%u,gid=%u,ttl=%d,dmode=0%o,fmode=0%o,dmask=0%o,fmask=0%o,maxiopages=%u",
+			   sf_g->uid, sf_g->gid, sf_g->ttl_msec, sf_g->dmode, sf_g->fmode, sf_g->dmask,
 			   sf_g->fmask, sf_g->cMaxIoPages);
 		if (sf_g->tag[0] != '\0') {
 			seq_puts(m, ",tag=");
 			seq_escape(m, sf_g->tag, " \t\n\\");
 		}
 	}
-
-    return 0;
+	return 0;
 }
 
 static struct super_operations sf_super_ops = {

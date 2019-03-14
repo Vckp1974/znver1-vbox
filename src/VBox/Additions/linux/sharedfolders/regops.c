@@ -1,4 +1,4 @@
-/* $Id: regops.c 77458 2019-02-25 14:40:13Z vboxsync $ */
+/* $Id: regops.c 77515 2019-02-28 22:35:07Z vboxsync $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, regular file inode and file operations.
  */
@@ -49,28 +49,6 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18)
 # define SEEK_END 2
 #endif
-
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)
-
-/*
- * inode compatibility glue.
- */
-#include <iprt/asm.h>
-
-DECLINLINE(loff_t) i_size_read(struct inode *inode)
-{
-	AssertCompile(sizeof(loff_t) == sizeof(uint64_t));
-	return ASMAtomicReadU64((uint64_t volatile *)&inode->i_size);
-}
-
-DECLINLINE(void) i_size_write(struct inode *inode, loff_t i_size)
-{
-	AssertCompile(sizeof(inode->i_size) == sizeof(uint64_t));
-	ASMAtomicWriteU64((uint64_t volatile *)&inode->i_size, i_size);
-}
-
-#endif /* < 2.6.0 */
 
 
 /**
@@ -972,6 +950,13 @@ static int sf_reg_open(struct inode *inode, struct file *file)
 	struct sf_glob_info *sf_g = GET_GLOB_INFO(inode->i_sb);
 	struct sf_inode_info *sf_i = GET_INODE_INFO(inode);
 	struct sf_reg_info *sf_r;
+#if   LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
+	struct dentry *dentry = file_dentry(file);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 20)
+	struct dentry *dentry = file->f_path.dentry;
+#else
+	struct dentry *dentry = file->f_dentry;
+#endif
 	VBOXSFCREATEREQ *pReq;
 	SHFLCREATEPARMS *pCreateParms;  /* temp glue */
 
@@ -1081,21 +1066,30 @@ static int sf_reg_open(struct inode *inode, struct file *file)
 		return -RTErrConvertToErrno(rc);
 	}
 
-	if (pCreateParms->Handle == SHFL_HANDLE_NIL) {
+	if (pCreateParms->Handle != SHFL_HANDLE_NIL) {
+		sf_dentry_chain_increase_ttl(dentry);
+		rc_linux = 0;
+	} else {
 		switch (pCreateParms->Result) {
 		case SHFL_PATH_NOT_FOUND:
+			rc_linux = -ENOENT;
+			break;
 		case SHFL_FILE_NOT_FOUND:
+			/** @todo sf_dentry_increase_parent_ttl(file->f_dentry); if we can trust it.  */
 			rc_linux = -ENOENT;
 			break;
 		case SHFL_FILE_EXISTS:
+			sf_dentry_chain_increase_ttl(dentry);
 			rc_linux = -EEXIST;
 			break;
 		default:
+			sf_dentry_chain_increase_parent_ttl(dentry);
+			rc_linux = 0;
 			break;
 		}
 	}
 
-	sf_i->force_restat = 1;
+	sf_i->force_restat = 1; /** @todo Why?!? */
 	sf_r->Handle.hHost = pCreateParms->Handle;
 	file->private_data = sf_r;
 	sf_handle_append(sf_i, &sf_r->Handle);
@@ -1164,7 +1158,8 @@ static loff_t sf_reg_llseek(struct file *file, loff_t off, int whence)
 #endif
 		case SEEK_END: {
 			struct sf_reg_info *sf_r = file->private_data;
-			int rc = sf_inode_revalidate_with_handle(GET_F_DENTRY(file), sf_r->Handle.hHost, true /*fForce*/);
+			int rc = sf_inode_revalidate_with_handle(GET_F_DENTRY(file), sf_r->Handle.hHost, true /*fForce*/,
+								 false /*fInodeLocked*/);
 			if (rc == 0)
 				break;
 			return rc;
