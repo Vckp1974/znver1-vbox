@@ -1,4 +1,4 @@
-/* $Id: NetIf-win.cpp 76592 2019-01-01 20:13:07Z vboxsync $ */
+/* $Id: NetIf-win.cpp 77440 2019-02-22 18:55:18Z vboxsync $ */
 /** @file
  * Main - NetIfList, Windows implementation.
  */
@@ -234,7 +234,7 @@ struct StaticIpConfig
 
 struct StaticIpV6Config
 {
-    BSTR           IPV6Address;
+    char *         IPV6Address;
     ULONG          IPV6NetMaskLength;
 };
 
@@ -242,7 +242,14 @@ class NetworkInterfaceHelperClientData : public ThreadVoidData
 {
 public:
     NetworkInterfaceHelperClientData(){};
-    ~NetworkInterfaceHelperClientData(){};
+    ~NetworkInterfaceHelperClientData()
+    {
+        if (msgCode == SVCHlpMsg::EnableStaticIpConfigV6 && u.StaticIPV6.IPV6Address)
+        {
+            RTStrFree(u.StaticIPV6.IPV6Address);
+            u.StaticIPV6.IPV6Address = NULL;
+        }
+    };
 
     SVCHlpMsg::Code msgCode;
     /* for SVCHlpMsg::CreateHostOnlyNetworkInterface */
@@ -535,7 +542,7 @@ static HRESULT netIfNetworkInterfaceHelperClient(SVCHlpClient *aClient,
             if (RT_FAILURE(vrc)) break;
             vrc = aClient->write(d->guid);
             if (RT_FAILURE(vrc)) break;
-            vrc = aClient->write(Utf8Str(d->u.StaticIPV6.IPV6Address));
+            vrc = aClient->write(d->u.StaticIPV6.IPV6Address);
             if (RT_FAILURE(vrc)) break;
             vrc = aClient->write(d->u.StaticIPV6.IPV6NetMaskLength);
             if (RT_FAILURE(vrc)) break;
@@ -1186,7 +1193,7 @@ int NetIfCreateHostOnlyNetworkInterface(VirtualBox *pVirtualBox,
 #endif
 }
 
-int NetIfRemoveHostOnlyNetworkInterface(VirtualBox *pVirtualBox, IN_GUID aId,
+int NetIfRemoveHostOnlyNetworkInterface(VirtualBox *pVirtualBox, const Guid &aId,
                                         IProgress **aProgress)
 {
 #ifndef VBOX_WITH_NETFLT
@@ -1283,8 +1290,8 @@ int NetIfEnableStaticIpConfig(VirtualBox *vBox, HostNetworkInterface * pIf, ULON
 #endif
 }
 
-int NetIfEnableStaticIpConfigV6(VirtualBox *vBox, HostNetworkInterface * pIf, IN_BSTR aOldIPV6Address,
-                                IN_BSTR aIPV6Address, ULONG aIPV6MaskPrefixLength)
+int NetIfEnableStaticIpConfigV6(VirtualBox *vBox, HostNetworkInterface * pIf, const Utf8Str &aOldIPV6Address,
+                                const Utf8Str &aIPV6Address, ULONG aIPV6MaskPrefixLength)
 {
     RT_NOREF(aOldIPV6Address);
 #ifndef VBOX_WITH_NETFLT
@@ -1319,7 +1326,7 @@ int NetIfEnableStaticIpConfigV6(VirtualBox *vBox, HostNetworkInterface * pIf, IN
                     d->msgCode = SVCHlpMsg::EnableStaticIpConfigV6;
                     d->guid = guid;
                     d->iface = pIf;
-                    d->u.StaticIPV6.IPV6Address = aIPV6Address;
+                    d->u.StaticIPV6.IPV6Address = RTStrDup(aIPV6Address.c_str());
                     d->u.StaticIPV6.IPV6NetMaskLength = aIPV6MaskPrefixLength;
 
                     rc = vBox->i_startSVCHelperClient(IsUACEnabled() == TRUE /* aPrivileged */,

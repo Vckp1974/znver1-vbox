@@ -1,4 +1,4 @@
-/* $Id: UIDetailsElements.h 76581 2019-01-01 06:24:57Z vboxsync $ */
+/* $Id: UIDetailsElements.h 77428 2019-02-22 11:38:37Z vboxsync $ */
 /** @file
  * VBox Qt GUI - UIDetailsElement[Name] classes declaration.
  */

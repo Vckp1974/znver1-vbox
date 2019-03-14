@@ -1,4 +1,4 @@
-/* $Id: regops.c 77419 2019-02-21 23:53:28Z vboxsync $ */
+/* $Id: regops.c 77443 2019-02-22 21:47:06Z vboxsync $ */
 /** @file
  * vboxsf - VBox Linux Shared Folders VFS, regular file inode and file operations.
  */
@@ -44,6 +44,7 @@
  && LINUX_VERSION_CODE <  KERNEL_VERSION(2, 6, 31)
 # include <linux/splice.h>
 #endif
+#include <iprt/err.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18)
 # define SEEK_END 2
@@ -73,22 +74,6 @@ DECLINLINE(void) i_size_write(struct inode *inode, loff_t i_size)
 
 
 /* fops */
-static int sf_reg_read_aux(const char *caller, struct sf_glob_info *sf_g,
-			   struct sf_reg_info *sf_r, void *buf,
-			   uint32_t * nread, uint64_t pos)
-{
-    /** @todo bird: yes, kmap() and kmalloc() input only. Since the buffer is
-     *        contiguous in physical memory (kmalloc or single page), we should
-     *        use a physical address here to speed things up. */
-	int rc = VbglR0SfRead(&client_handle, &sf_g->map, sf_r->handle,
-			      pos, nread, buf, false /* already locked? */ );
-	if (RT_FAILURE(rc)) {
-		LogFunc(("VbglR0SfRead failed. caller=%s, rc=%Rrc\n", caller,
-			 rc));
-		return -EPROTO;
-	}
-	return 0;
-}
 
 static int sf_reg_write_aux(const char *caller, struct sf_glob_info *sf_g,
 			    struct sf_reg_info *sf_r, void *buf,
@@ -159,6 +144,20 @@ static struct pipe_buf_operations sf_pipe_buf_ops = {
 	.steal = sf_pipe_buf_steal,
 	.get = sf_pipe_buf_get,
 };
+
+static int sf_reg_read_aux(const char *caller, struct sf_glob_info *sf_g,
+			   struct sf_reg_info *sf_r, void *buf,
+			   uint32_t * nread, uint64_t pos)
+{
+	int rc = VbglR0SfRead(&client_handle, &sf_g->map, sf_r->handle,
+			      pos, nread, buf, false /* already locked? */ );
+	if (RT_FAILURE(rc)) {
+		LogFunc(("VbglR0SfRead failed. caller=%s, rc=%Rrc\n", caller,
+			 rc));
+		return -EPROTO;
+	}
+	return 0;
+}
 
 # define LOCK_PIPE(pipe)   do { if (pipe->inode) mutex_lock(&pipe->inode->i_mutex); } while (0)
 # define UNLOCK_PIPE(pipe) do { if (pipe->inode) mutex_unlock(&pipe->inode->i_mutex); } while (0)
@@ -474,11 +473,7 @@ static ssize_t sf_reg_read(struct file *file, char /*__user*/ *buf, size_t size,
 	struct inode *inode = GET_F_DENTRY(file)->d_inode;
 	struct sf_glob_info *sf_g = GET_GLOB_INFO(inode->i_sb);
 	struct sf_reg_info *sf_r = file->private_data;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 2)
-	struct address_space *mapping = file->f_mapping;
-#else
 	struct address_space *mapping = inode->i_mapping;
-#endif
 
 	TRACE();
 	if (!S_ISREG(inode->i_mode)) {
@@ -531,7 +526,7 @@ static ssize_t sf_reg_read(struct file *file, char /*__user*/ *buf, size_t size,
 			VbglR0PhysHeapFree(pReq);
 	}
 
-# if 0 /* Turns out this is slightly slower than locking the pages even for 4KB reads (4.19/amd64). */
+#if 0 /* Turns out this is slightly slower than locking the pages even for 4KB reads (4.19/amd64). */
 	/*
 	 * For medium sized requests try use a bounce buffer.
 	 */
@@ -559,9 +554,37 @@ static ssize_t sf_reg_read(struct file *file, char /*__user*/ *buf, size_t size,
 			kfree(pvBounce);
 		}
 	}
-# endif
+#endif
 
 	return sf_reg_read_fallback(file, buf, size, off, sf_g, sf_r);
+}
+
+
+/**
+ * Wrapper around invalidate_mapping_pages() for page cache invalidation so that
+ * the changes written via sf_reg_write are made visible to mmap users.
+ */
+DECLINLINE(void) sf_reg_write_invalidate_mapping_range(struct address_space *mapping, loff_t offStart, loff_t offEnd)
+{
+	/*
+	 * Only bother with this if the mapping has any pages in it.
+	 *
+	 * Note! According to the docs, the last parameter, end, is inclusive (we
+	 *       would have named it 'last' to indicate this).
+	 *
+	 * Note! The pre-2.6.12 function might not do enough to sure consistency
+	 *       when any of the pages in the range is already mapped.
+	 */
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 12)
+	if (mapping)
+		invalidate_inode_pages2_range(mapping, offStart >> PAGE_SHIFT, (offEnd - 1) >> PAGE_SHIFT);
+# elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 60)
+	if (mapping && mapping->nrpages > 0)
+		invalidate_mapping_pages(mapping, offStart >> PAGE_SHIFT, (offEnd - 1) >> PAGE_SHIFT);
+# else
+	/** @todo ... */
+	RT_NOREF(mapping, offStart, offEnd);
+# endif
 }
 
 
@@ -640,6 +663,7 @@ static ssize_t sf_reg_write_fallback(struct file *file, const char /*__user*/ *b
 				size    -= cbActual;
 				if (offFile > i_size_read(inode))
 					i_size_write(inode, offFile);
+				sf_reg_write_invalidate_mapping_range(inode->i_mapping, offFile - cbActual, offFile);
 
 				/*
 				 * Are we done already?  If so commit the new file offset.
@@ -689,11 +713,12 @@ static ssize_t sf_reg_write_fallback(struct file *file, const char /*__user*/ *b
 static ssize_t sf_reg_write(struct file *file, const char *buf, size_t size,
 			    loff_t * off)
 {
-	loff_t pos;
-	struct inode *inode = GET_F_DENTRY(file)->d_inode;
+	struct inode         *inode = GET_F_DENTRY(file)->d_inode;
 	struct sf_inode_info *sf_i = GET_INODE_INFO(inode);
-	struct sf_glob_info *sf_g = GET_GLOB_INFO(inode->i_sb);
-	struct sf_reg_info *sf_r = file->private_data;
+	struct sf_glob_info  *sf_g = GET_GLOB_INFO(inode->i_sb);
+	struct sf_reg_info   *sf_r = file->private_data;
+	struct address_space *mapping = inode->i_mapping;
+	loff_t                pos;
 
 	TRACE();
 	BUG_ON(!sf_i);
@@ -720,6 +745,22 @@ static ssize_t sf_reg_write(struct file *file, const char *buf, size_t size,
 	}
 
 	/*
+	 * If there are active writable mappings, coordinate with any
+	 * pending writes via those.
+	 */
+	if (   mapping
+	    && mapping->nrpages > 0
+	    && mapping_writably_mapped(mapping)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
+		int err = filemap_fdatawait_range(mapping, pos, pos + size - 1);
+		if (err)
+			return err;
+#else
+		/** @todo ...   */
+#endif
+	}
+
+	/*
 	 * For small requests, try use an embedded buffer provided we get a heap block
 	 * that does not cross page boundraries (see host code).
 	 */
@@ -738,6 +779,7 @@ static ssize_t sf_reg_write(struct file *file, const char *buf, size_t size,
 					*off = pos;
 					if (pos > i_size_read(inode))
 						i_size_write(inode, pos);
+					sf_reg_write_invalidate_mapping_range(mapping, pos - cbRet, pos);
 				} else
 					cbRet = -EPROTO;
 				sf_i->force_restat = 1; /* mtime (and size) may have changed */
@@ -751,7 +793,7 @@ static ssize_t sf_reg_write(struct file *file, const char *buf, size_t size,
 			VbglR0PhysHeapFree(pReq);
 	}
 
-# if 0 /* Turns out this is slightly slower than locking the pages even for 4KB reads (4.19/amd64). */
+#if 0 /* Turns out this is slightly slower than locking the pages even for 4KB reads (4.19/amd64). */
 	/*
 	 * For medium sized requests try use a bounce buffer.
 	 */
@@ -771,6 +813,7 @@ static ssize_t sf_reg_write(struct file *file, const char *buf, size_t size,
 						*off = pos;
 						if (pos > i_size_read(inode))
 							i_size_write(inode, pos);
+						sf_reg_write_invalidate_mapping_range(mapping, pos - cbRet, pos);
 					} else
 						cbRet = -EPROTO;
 					sf_i->force_restat = 1; /* mtime (and size) may have changed */
@@ -785,7 +828,7 @@ static ssize_t sf_reg_write(struct file *file, const char *buf, size_t size,
 			}
 		}
 	}
-# endif
+#endif
 
 	return sf_reg_write_fallback(file, buf, size, off, pos, inode, sf_i, sf_g, sf_r);
 }
@@ -1092,72 +1135,119 @@ struct inode_operations sf_reg_iops = {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
 
+/**
+ * Used to read the content of a page into the page cache.
+ *
+ * Needed for mmap and reads+writes when the file is mmapped in a
+ * shared+writeable fashion.
+ */
 static int sf_readpage(struct file *file, struct page *page)
 {
 	struct inode *inode = GET_F_DENTRY(file)->d_inode;
-	struct sf_glob_info *sf_g = GET_GLOB_INFO(inode->i_sb);
-	struct sf_reg_info *sf_r = file->private_data;
-	uint32_t nread = PAGE_SIZE;
-	char *buf;
-	loff_t off = (loff_t)page->index << PAGE_SHIFT;
-	int ret;
+	int           err;
 
 	TRACE();
+	if (!is_bad_inode(inode)) {
+	    VBOXSFREADPGLSTREQ *pReq = (VBOXSFREADPGLSTREQ *)VbglR0PhysHeapAlloc(sizeof(*pReq));
+	    if (pReq) {
+		    struct sf_glob_info *sf_g     = GET_GLOB_INFO(inode->i_sb);
+		    struct sf_reg_info  *sf_r     = file->private_data;
+		    uint32_t 		 cbRead;
+		    int                  vrc;
 
-	buf = kmap(page);
-	ret = sf_reg_read_aux(__func__, sf_g, sf_r, buf, &nread, off);
-	if (ret) {
-		kunmap(page);
-		if (PageLocked(page))
-			unlock_page(page);
-		return ret;
-	}
-	BUG_ON(nread > PAGE_SIZE);
-	memset(&buf[nread], 0, PAGE_SIZE - nread);
-	flush_dcache_page(page);
-	kunmap(page);
-	SetPageUptodate(page);
+		    pReq->PgLst.offFirstPage = 0;
+		    pReq->PgLst.aPages[0]    = page_to_phys(page);
+		    vrc = VbglR0SfHostReqReadPgLst(sf_g->map.root,
+		                                   pReq,
+		                                   sf_r->handle,
+		                                   (uint64_t)page->index << PAGE_SHIFT,
+		                                   PAGE_SIZE,
+		                                   1 /*cPages*/);
+
+		    cbRead = pReq->Parms.cb32Read.u.value32;
+		    AssertStmt(cbRead <= PAGE_SIZE, cbRead = PAGE_SIZE);
+		    VbglR0PhysHeapFree(pReq);
+
+		    if (RT_SUCCESS(vrc)) {
+			    if (cbRead == PAGE_SIZE) {
+				    /* likely */
+			    } else {
+				    uint8_t *pbMapped = (uint8_t *)kmap(page);
+				    RT_BZERO(&pbMapped[cbRead], PAGE_SIZE - cbRead);
+				    kunmap(page);
+				    /** @todo truncate the inode file size? */
+			    }
+
+			    flush_dcache_page(page);
+			    SetPageUptodate(page);
+			    err = 0;
+		    } else
+			    err = -EPROTO;
+	    } else
+		    err = -ENOMEM;
+	} else
+		err = -EIO;
 	unlock_page(page);
-	return 0;
+	return err;
 }
 
+/**
+ * Used to write out the content of a dirty page cache page to the host file.
+ *
+ * Needed for mmap and writes when the file is mmapped in a shared+writeable
+ * fashion.
+ */
 static int sf_writepage(struct page *page, struct writeback_control *wbc)
 {
-	struct address_space *mapping = page->mapping;
-	struct inode *inode = mapping->host;
-	struct sf_glob_info *sf_g = GET_GLOB_INFO(inode->i_sb);
-	struct sf_inode_info *sf_i = GET_INODE_INFO(inode);
-	struct file *file = sf_i->file;
-	struct sf_reg_info *sf_r = file->private_data;
-	char *buf;
-	uint32_t nwritten = PAGE_SIZE;
-	int end_index = inode->i_size >> PAGE_SHIFT;
-	loff_t off = ((loff_t) page->index) << PAGE_SHIFT;
 	int err;
 
 	TRACE();
 
-	if (page->index >= end_index)
-		nwritten = inode->i_size & (PAGE_SIZE - 1);
+	VBOXSFWRITEPGLSTREQ *pReq = (VBOXSFWRITEPGLSTREQ *)VbglR0PhysHeapAlloc(sizeof(*pReq));
+	if (pReq) {
+		struct address_space *mapping   = page->mapping;
+		struct inode         *inode     = mapping->host;
+		struct sf_glob_info  *sf_g      = GET_GLOB_INFO(inode->i_sb);
+		struct sf_inode_info *sf_i      = GET_INODE_INFO(inode);
+		struct file          *file      = sf_i->file; /** @todo r=bird: This isn't quite sane wrt readonly vs writeable. */
+		struct sf_reg_info   *sf_r      = file->private_data;
+		uint64_t const        cbFile    = i_size_read(inode);
+		uint64_t const        offInFile = (uint64_t)page->index << PAGE_SHIFT;
+		uint32_t const        cbToWrite = page->index != (cbFile >> PAGE_SHIFT) ? PAGE_SIZE
+			                        : (uint32_t)cbFile & (uint32_t)PAGE_OFFSET_MASK;
+		int                   vrc;
 
-	buf = kmap(page);
+		pReq->PgLst.offFirstPage = 0;
+		pReq->PgLst.aPages[0]    = page_to_phys(page);
+		vrc = VbglR0SfHostReqWritePgLst(sf_g->map.root,
+					        pReq,
+					        sf_r->handle,
+					        offInFile,
+		                                cbToWrite,
+					        1 /*cPages*/);
+		AssertMsgStmt(pReq->Parms.cb32Write.u.value32 == cbToWrite || RT_FAILURE(vrc), /* lazy bird */
+		              ("%#x vs %#x\n", pReq->Parms.cb32Write, cbToWrite),
+			      vrc = VERR_WRITE_ERROR);
+		VbglR0PhysHeapFree(pReq);
 
-	err = sf_reg_write_aux(__func__, sf_g, sf_r, buf, &nwritten, off);
-	if (err < 0) {
-		ClearPageUptodate(page);
-		goto out;
-	}
+		if (RT_SUCCESS(vrc)) {
+			/* Update the inode if we've extended the file. */
+			/** @todo is this necessary given the cbToWrite calc above? */
+			uint64_t const offEndOfWrite = offInFile + cbToWrite;
+			if (   offEndOfWrite > cbFile
+			    && offEndOfWrite > i_size_read(inode))
+				i_size_write(inode, offEndOfWrite);
 
-	if (off > inode->i_size)
-		inode->i_size = off;
+			if (PageError(page))
+				ClearPageError(page);
 
-	if (PageError(page))
-		ClearPageError(page);
-	err = 0;
-
- out:
-	kunmap(page);
-
+			err = 0;
+		} else {
+			ClearPageUptodate(page);
+			err = -EPROTO;
+		}
+	} else
+		err = -ENOMEM;
 	unlock_page(page);
 	return err;
 }
@@ -1169,6 +1259,10 @@ int sf_write_begin(struct file *file, struct address_space *mapping, loff_t pos,
 		   void **fsdata)
 {
 	TRACE();
+#if 0
+	printk("sf_write_begin: pos=%#llx len=%#x flags=%#x\n", pos, len, flags);
+	RTLogBackdoorPrintf("sf_write_begin: pos=%#llx len=%#x flags=%#x\n", pos, len, flags);
+#endif
 /** @todo rig up a FsPerf testcase for this code! */
 
 	return simple_write_begin(file, mapping, pos, len, flags, pagep,
