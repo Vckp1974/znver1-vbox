@@ -1,7 +1,7 @@
-virtualbox (6.0.5~r77588.vckp1) bionic-security; urgency=medium
+virtualbox (6.0.5~r77588-vckp1) bionic; urgency=medium
 
   * Set up initial release for repository at https://github.com/Vckp1974/znver1-vbox
   * Synchronise virtual box source code to http://www.virtualbox.org/svn/vbox
   * Added znver1 CFLAGS and CXXFLAGS
 
- -- Vanida Plamondon <vanida.plamondon@gmail.com>  Thur, 14 Mar 2019 12:14:53 -0700
+ -- Vanida Plamondon <vanida.plamondon@gmail.com>  Thu, 14 Mar 2019 12:14:53 -0700
